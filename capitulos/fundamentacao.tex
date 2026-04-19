@@ -1,0 +1,266 @@
+\chapter{Fundamentação teórica}
+Este capítulo estabelece as bases conceituais necessárias para a compreensão do escalonamento adaptativo de compactações em árvores LSM sobre Memória Persistente. Inicialmente, discutem-se os fundamentos das estruturas Log-Structured Merge-trees, seguidos pela análise detalhada da mecânica de compactação e suas implicações de custo. Posteriormente, abordam-se as características da Memória Persistente (PMem) e como ela altera os paradigmas de armazenamento tradicionais. Por fim, revisam-se os trabalhos relacionados e as lacunas na literatura que motivam a abordagem adaptativa proposta.
+
+\section{Bancos de Dados Key-Value e o Problema de Armazenamento Eficiente}
+
+Sistemas de gerenciamento de dados modernos enfrentam um desafio fundamental, como
+persistir e recuperar grandes volumes de informação com alta velocidade, baixa
+latência e custo operacional razoável. Enquanto bancos de dados relacionais
+tradicionais organizam dados em tabelas com esquemas rígidos e utilizam estruturas
+como B-Trees para indexação em disco, esse modelo apresenta limitações sérias em
+cenários de alta taxa de gravação, onde o acesso aleatório ao disco imposto pela
+B-Tree para operações de \textit{insert} e \textit{update} torna-se um gargalo
+à medida que o volume de escritas cresce~\cite{database_internals}.
+
+Para contornar esse problema, sistemas orientados a pares chave-valor
+(\textit{key-value stores}) como o RocksDB~\cite{rocksdb} e o
+LevelDB~\cite{leveldb} adotam uma abordagem radicalmente
+diferente: \textbf{nunca modificar dados diretamente em disco}. Em vez disso,
+todas as operações, inclusive atualizações e deleções, são tratadas como
+novas gravações sequenciais, o que maximiza a utilização da largura de banda do
+dispositivo de armazenamento e elimina o I/O aleatório custoso~\cite{lsm_survey}.
+
+Esse paradigma, chamado de \textit{append-only}, é a base da estrutura
+\textit{Log-Structured Merge-Tree} (LSM-tree), descrita em detalhes na
+Seção~\ref{sec:lsmtree}. A LSM-tree é hoje o padrão de fato na camada de
+armazenamento de sistemas distribuídos de larga escala, sendo empregada em
+plataformas de streaming, bancos de dados de séries temporais e motores de busca,
+entre outros~\cite{rocksdb,lsm_survey}. Sua adoção em ambientes que utilizam
+Memória Persistente, abordada na Seção~\ref{sec:pmem}, abre novas
+oportunidades de otimização, mas também expõe fragilidades que este trabalho
+busca otimizar.
+
+\section{LSM-Trees}
+\label{sec:lsmtree}
+
+A estrutura \textit{Log-Structured Merge-tree} (LSM-tree), proposta originalmente
+por~\citeauthor{ONeil1996TheLM}~\cite{ONeil1996TheLM}, tornou-se o padrão de fato
+para a camada de armazenamento em sistemas NoSQL modernos e \textit{key-value
+stores}, priorizando o desempenho de escrita por meio de operações
+\textit{append-only}, evitando atualizações \textit{in-place} que geram I/O
+aleatório custoso em disco~\cite{database_internals,lsm_survey}.
+
+\subsection*{Arquitetura e Fluxo de Escrita}
+
+A arquitetura de uma LSM-tree opera em múltiplas camadas, divididas entre memória
+volátil e armazenamento persistente. Os principais componentes são~\cite{database_internals,rocksdb}:
+
+\begin{itemize}
+    \item \textbf{MemTable:} Um buffer em memória (geralmente uma SkipList ou
+    árvore balanceada) que recebe todas as escritas. Como reside em memória
+    volátil, as operações são rápidas. Para garantir durabilidade, as escritas são
+    registradas sequencialmente em um \textit{Write-Ahead Log} (WAL) antes de
+    entrarem na MemTable.
+
+    \item \textbf{SSTables (\textit{Sorted String Tables}):} Quando a MemTable
+    atinge um limite de tamanho, ela é convertida em um formato imutável, ordenado
+    por chave, e despejada (\textit{flushed}) para o armazenamento persistente.
+    Uma vez escrito, esse arquivo nunca é modificado.
+
+    \item \textbf{Níveis (\textit{Levels}):} As SSTables são organizadas em
+    níveis (L0, L1, \ldots, Ln). O nível L0 contém os arquivos recém-criados pelo
+    \textit{flush}. À medida que os dados envelhecem e são compactados, eles
+    migram para níveis inferiores, exponencialmente maiores.
+
+    \item \textbf{Bloom Filters:} Para evitar leituras desnecessárias em disco,
+    cada SSTable geralmente possui um Bloom Filter associado, que permite verificar
+    rapidamente se uma chave definitivamente \emph{não} existe em um arquivo,
+    economizando I/O de leitura.
+\end{itemize}
+
+\subsection*{O Trade-off Central: Escrita vs.\ Leitura}
+
+A imutabilidade das SSTables é o que garante o alto desempenho de escrita, mas
+introduz uma complexidade inerente nas leituras: uma mesma chave pode ter múltiplas
+versões distribuídas por diferentes SSTables em diferentes níveis. Para ler um
+valor, o sistema precisa consultar os níveis do mais recente (L0) ao mais antigo,
+até encontrar a versão válida. Esse custo é mitigado pelos Bloom Filters e pela
+garantia de ordem dentro de cada nível, mas representa um trade-off fundamental
+no design da estrutura~\cite{Sarkar_2021,lsm_survey}.
+
+O processo de \textbf{compactação} é o mecanismo que reequilibra esse trade-off:
+ele consolida SSTables de diferentes níveis, descartando versões obsoletas e
+reorganizando os dados para reduzir o custo de leitura futura. A mecânica
+detalhada, as políticas de compactação e as métricas de custo associadas são
+analisadas na Seção~\ref{sec:compaction}.
+
+\subsection*{Compactação}\label{sec:compaction}
+
+A compactação (\textit{compaction}) é o mecanismo fundamental que permite às
+LSM-trees manterem desempenho sustentável ao longo do tempo. Como as SSTables são
+imutáveis e novas versões de chaves são continuamente inseridas em níveis mais
+recentes, o sistema naturalmente acumula múltiplas versões do mesmo dado,
+além de registros de deleção (\textit{tombstones}). Sem intervenção, esse acúmulo
+aumentaria progressivamente o custo de leitura e o consumo de espaço em disco.
+
+De forma geral, a compactação consiste em selecionar um conjunto de SSTables,
+tipicamente de um nível $L_i$ e possivelmente do nível subsequente $L_{i+1}$,
+mesclá-las (\textit{merge}) de maneira ordenada e produzir um novo conjunto de
+SSTables livres de redundâncias. Durante esse processo, versões obsoletas de
+chaves são descartadas, e \textit{tombstones} podem ser eliminados quando já não
+há versões antigas a serem invalidadas~\cite{database_internals,lsm_survey}.
+
+O processo segue essencialmente um padrão de \textit{merge sort}: dado que cada
+SSTable já está ordenada por chave, a fusão pode ser realizada de forma sequencial,
+maximizando a localidade de acesso e evitando I/O aleatório. O resultado é um
+novo conjunto de arquivos maiores, mais organizados e com menor sobreposição de
+intervalos de chaves, o que reduz o número de estruturas que precisam ser
+consultadas durante leituras futuras.
+
+Existem diferentes políticas de compactação, sendo as mais comuns:
+
+\begin{itemize}
+    \item \textbf{Size-Tiered Compaction (STC):} Agrupa SSTables de tamanhos
+    semelhantes dentro de um mesmo nível e as mescla quando um determinado número
+    de arquivos é atingido. Essa abordagem favorece a redução do número de
+    arquivos, mas pode manter maior sobreposição de chaves, impactando leituras.
+
+    \item \textbf{Leveled Compaction (LC):} Organiza os dados em níveis com
+    limites de tamanho bem definidos e mínima sobreposição entre SSTables dentro
+    de um mesmo nível. A cada compactação, dados são promovidos de $L_i$ para
+    $L_{i+1}$ de forma controlada. Essa política reduz significativamente o custo
+    de leitura, ao custo de maior volume de escrita~\cite{rocksdb,lsm_survey}. É o padrão em sistemas como o RocksDB~\cite{rocksdb} e LevelDB~\cite{leveldb}.
+\end{itemize}
+
+Embora essencial, a compactação introduz custos relevantes, frequentemente
+descritos em termos de três métricas principais:
+
+\begin{itemize}
+    \item \textbf{Amplificação de Escrita (Write Amplification - WAF):} Refere-se ao fato de que um mesmo dado pode ser reescrito múltiplas vezes ao longo de sua vida útil, à medida que é
+    propagado entre níveis durante compactações.
+
+    \item \textbf{Amplificação de Leitura (Read Amplification - RA):} Relaciona-se ao número de SSTables que precisam ser consultadas para responder a uma leitura. A compactação reduz
+    esse custo ao consolidar dados.
+
+    \item \textbf{Amplificação de Espaço (Space Ampliﬁcation - SA):} Decorre da presença temporária de dados duplicados ou obsoletos antes que sejam removidos por compactação.
+\end{itemize}
+
+Essas três métricas formam um trade-off intrínseco: políticas que minimizam amplificação de escrita, como \textit{leveled compaction}, tendem a aumentar
+\textit{write amplification}, enquanto abordagens mais simples, como
+\textit{size-tiered}, apresentam comportamento oposto. A escolha da estratégia de
+compactação, bem como seus parâmetros (tamanho de níveis, gatilhos e paralelismo),
+tem impacto direto no desempenho e na eficiência do sistema~\cite{Sarkar_2021}.
+
+Além disso, a compactação é uma das principais fontes de carga de I/O em sistemas
+baseados em LSM-tree, podendo competir com operações de leitura e escrita
+\textit{foreground}. Por esse motivo, implementações modernas, como RocksDB, utilizam
+mecanismos de agendamento, limitação de taxa (\textit{rate limiting}) e execução
+em segundo plano para mitigar interferências e manter previsibilidade de
+desempenho~\cite{rocksdb}.
+
+\subsection*{LSM-Trees sobre Memória Persistente}
+
+As características operacionais das LSM-trees, em especial a alta frequência de
+gravações físicas induzida pelo processo de compactação, ganham uma nova dimensão
+quando o substrato de armazenamento é uma Memória Persistente
+(PMem)~\cite{revisting_design_lsm,FlatLSM,SLM-DB}. A PMem, descrita em detalhes
+na Seção~\ref{sec:pmem}, apresenta latências significativamente menores que SSDs,
+mas impõe restrições de largura de banda de escrita e sensibilidade à topologia de
+memória que tornam o agendamento ingênuo de compactações potencialmente prejudicial.
+Compreender a interação entre a mecânica da LSM-tree e as características da PMem
+é, portanto, central para a proposta deste trabalho.
+
+\section{Memória Persistente (PMem)}
+\label{sec:pmem}
+
+A Memória Persistente (PMem), materializada em tecnologias como a Intel Optane DC
+Persistent Memory, introduz uma nova camada na hierarquia de memória situada entre
+a DRAM e os SSDs NVMe. Ao contrário da DRAM, que perde seus dados quando a energia
+é removida, e ao contrário dos SSDs, que são acessíveis apenas por meio de
+operações de bloco (4~KB), a PMem oferece simultaneamente \textbf{persistência de
+dados} e \textbf{endereçamento a byte} (\textit{byte-addressability}), com latências
+próximas à DRAM~\cite{van_renen_2020}. Essa posição singular na hierarquia tem
+implicações diretas para o design de \textit{engines} de armazenamento: operações
+que antes exigiam uma travessia completa pela pilha de I/O do sistema operacional
+podem, em PMem, ser executadas diretamente pelo processador via instruções de carga
+e armazenamento (\texttt{MOV}).
+
+Trabalhos recentes exploraram especificamente as implicações da PMem para sistemas
+baseados em LSM-tree. \citeauthor{revisting_design_lsm}~\cite{revisting_design_lsm}
+revisitam o design de motores OLTP sobre PMem, identificando que a assimetria de
+largura de banda é o principal fator limitante. \citeauthor{MatrixKV}~\cite{MatrixKV}
+propõem um contêiner em NVM para reduzir \textit{write stalls}, e
+\citeauthor{FlatLSM}~\cite{FlatLSM} apresentam uma variante de LSM-tree otimizada
+para escrita em PMem. \citeauthor{SLM-DB}~\cite{SLM-DB} propõem uma abordagem de
+nível único (\textit{single-level}) que aproveita o endereçamento a byte da PMem
+para eliminar níveis intermediários. Esses trabalhos evidenciam que o uso eficiente
+da PMem exige adaptações profundas nas políticas de gerenciamento da LSM-tree, o que motiva diretamente a proposta de escalonamento adaptativo deste trabalho.
+
+\subsection{Modos de Operação}
+
+A Intel Optane suporta dois modos principais de operação, com características
+distintas para cada caso de uso~\cite{van_renen_2020}:
+
+\begin{itemize}
+    \item \textbf{Memory Mode:} A PMem funciona como extensão transparente da
+    DRAM, gerenciada pelo controlador de memória. A DRAM atua como cache de
+    última camada para a PMem. Não há persistência visível ao software. Este modo
+    é útil para ampliar a capacidade de memória principal sem modificações no
+    software.
+
+    \item \textbf{App Direct Mode:} A PMem é exposta como um dispositivo separado,
+    diretamente acessível pelo aplicativo via \textit{memory-mapped files} (usando
+    bibliotecas como a \texttt{libpmem} do PMDK). Nesse modo, o software é
+    responsável por garantir a durabilidade dos dados, gerenciando explicitamente
+    os \textit{flushes} de linha de cache.
+\end{itemize}
+
+\subsection{Domínios de Persistência e Primitivas}
+
+A garantia de durabilidade na PMem exige o gerenciamento explícito dos caches da
+CPU. Os dados escritos por uma instrução \texttt{MOV} podem residir nos caches
+voláteis (L1/L2/L3) indefinidamente. Para persistir, o dado deve alcançar o
+domínio de persistência assíncrona (ADR) no controlador de memória, que garante
+que os dados serão gravados na PMem mesmo em caso de falha de
+energia~\cite{van_renen_2020}.
+
+As instruções necessárias para este processo são:
+
+\begin{itemize}
+    \item \textbf{Cache Line Flush:} Instruções como \texttt{CLWB}
+    (\textit{Cache Line Write Back}) escrevem a linha de cache suja de volta para
+    a memória sem necessariamente invalidá-la no cache, o que é crucial para
+    manter o desempenho de leituras subsequentes.
+
+    \item \textbf{Fences (Barreiras):} A instrução \texttt{SFENCE} é obrigatória
+    após os \textit{flushes} para garantir a ordem das operações e confirmar que
+    os dados deixaram os buffers de escrita da CPU.
+\end{itemize}
+
+Cada \textit{persist-barrier} (par \texttt{CLWB} + \texttt{SFENCE}) tem um custo
+de latência não desprezível~\cite{van_renen_2020}. Em cenários de alta
+concorrência, múltiplas \textit{threads} emitindo \textit{persist-barriers}
+simultaneamente podem saturar os buffers internos do controlador de PMem,
+resultando em degradação severa de latência.
+
+\subsection{Desempenho e Assimetria}
+
+A avaliação experimental conduzida por~\citeauthor{van_renen_2020}~\cite{van_renen_2020}
+revela comportamentos críticos para o escalonamento:
+
+\begin{itemize}
+    \item \textbf{Assimetria Leitura/Escrita:} A largura de banda de escrita na
+    PMem é significativamente menor que a de leitura, podendo ser de 3 a 4
+    vezes inferior em cargas aleatórias~\cite{van_renen_2020}. Isso significa que
+    compactações agressivas, que são essencialmente cargas de escrita intensiva,
+    consomem uma fração desproporcional da largura de banda
+    disponível~\cite{revisting_design_lsm}.
+
+    \item \textbf{Granularidade Interna:} Embora endereçável a byte, a PMem opera
+    internamente com blocos maiores (256~bytes no caso da Intel Optane). Escritas
+    muito pequenas (menores que 256~B) causam amplificação interna de escrita no
+    dispositivo (\textit{media write amplification}), penalizando tanto o
+    desempenho quanto a durabilidade~\cite{van_renen_2020}.
+
+    \item \textbf{Sensibilidade NUMA:} A PMem é um dispositivo topologicamente
+    vinculado a um soquete NUMA específico. Acessos realizados por \textit{threads}
+    alocadas em soquetes remotos atravessam os enlaces \textit{inter-socket} (UPI),
+    introduzindo latência adicional significativa.
+
+    \item \textbf{Contenção sob Alta Concorrência:} Um excesso de \textit{threads}
+    tentando persistir dados simultaneamente pode saturar os buffers do controlador
+    de memória, degradando drasticamente a latência~\cite{van_renen_2020}. Essa
+    característica fundamenta a necessidade de um escalonador que limite a
+    concorrência de compactações em momentos de alta pressão de I/O, conforme
+    investigado também em~\cite{MatrixKV,FlatLSM}.
+\end{itemize}

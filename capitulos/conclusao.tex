@@ -1,0 +1,34 @@
+\chapter*{Conclusões e Trabalhos Futuros}\label{cap:conclusao}
+\addcontentsline{toc}{chapter}{Conclusão e Trabalhos Futuros}
+
+\section*{Conclusões}
+
+Este trabalho propôs e avaliou um escalonador adaptativo de compactações para arquiteturas LSM-tree operando sobre Memória Persistente (PMEM). A motivação central residia na necessidade de mitigar os impactos negativos da compactação,  como a amplificação de escrita (WAF) e os picos de latência\cite{revisting_design_lsm}, em dispositivos que, embora ofereçam persistência com baixa latência, possuem restrições de durabilidade e sensibilidade à topologia de memória\cite{van_renen_2020}.
+
+Os resultados experimentais demonstraram que a adoção de um mecanismo de observabilidade dinâmica, capaz de calcular pontuações de utilidade baseadas no estado da CPU e do barramento de I/O, é uma estratégia eficaz. As principais conclusões deste estudo são:
+
+\begin{itemize}
+    \item \textbf{Eficiência Temporal:} O escalonador adaptativo não reduziu o volume total de trabalho de fundo (como comprovado pela contagem total de compactações e uso de CPU idênticos ao modelo \textit{Base}), mas sim reorganizou essas tarefas no tempo. Isso permitiu uma redução da latência P99 em cenários de alta concorrência (de 531,03 $\mu s$ para 507,64 $\mu s$ no teste de 16 \textit{threads}), aumentando a previsibilidade do sistema.
+    \item \textbf{Importância da Afinidade NUMA:} A investigação sobre o viés de agendamento revelou que sistemas operando em PMEM são criticamente sensíveis à localidade de dados. O uso de \textit{CPU pinning} resultou em ganhos de vazão superiores a 25\% em cargas mistas, consolidando a necessidade de alinhar o escalonador do banco de dados com a topologia do \textit{hardware}.
+    \item \textbf{Preservação do Dispositivo:} O algoritmo manteve o fator WAF em
+    níveis estatisticamente equivalentes ao modelo Base em todos os cenários testados, com leve redução em cargas mistas e alta concorrência. Esse resultado é deliberado: o objetivo do ACS não é reduzir o volume
+    total de compactações (o que degradaria a estrutura da árvore e penalizaria as
+    leituras~\cite{Sarkar_2021}), mas sim redistribuí-las no tempo~\cite{dCompaction}.
+    A equivalência do WAF confirma que a redistribuição temporal ocorre sem acúmulo de
+    débito técnico patológico na PMem~\cite{van_renen_2020,revisting_design_lsm},
+    validando a viabilidade de adoção corporativa do mecanismo. 
+    \item \textbf{Baixo \textit{Overhead}:} A função de utilidade implementada provou ser computacionalmente leve, não gerando penalidades na vazão bruta (\textit{throughput}) do RocksDB, mesmo sob estresse máximo.
+\end{itemize}
+
+Em suma, o trabalho atingiu o objetivo de responder positivamente às perguntas de pesquisa formuladas na introdução, provando ser possível reduzir a latência de cauda e gerenciar a amplificação de escrita de forma dinâmica e eficiente em LSM-trees.
+
+\section*{Trabalhos Futuros}
+
+Apesar dos avanços alcançados, a natureza adaptativa do sistema abre precedentes para diversas expansões e investigações adicionais:
+
+\begin{itemize}
+    \item \textbf{Ajuste Dinâmico de Sensibilidade ($\alpha$):} No presente trabalho, o parâmetro $\alpha$ foi fixado em cada rodada experimental. Um trabalho futuro promissor seria a implementação de um mecanismo que ajuste o $\alpha$ de forma autônoma durante a execução, baseado na detecção de mudanças de fase no \textit{workload}.
+    \item \textbf{Predição de Carga com Aprendizado de Máquina:} Substituir ou complementar a Função de Utilidade heurística por modelos leves de \textit{Machine Learning} (como redes neurais recorrentes ou filtros de Kalman) para antecipar picos de carga de escrita e realizar compactações preventivas em períodos de ociosidade.
+    \item \textbf{Avaliação de Hierarquia Híbrida:} Expandir o escalonador para gerenciar compactações em sistemas que utilizam uma hierarquia mista de PMEM para níveis superiores (L0-L2) e SSDs NVMe para níveis inferiores, otimizando o agendamento conforme o custo de I/O de cada mídia.
+    \item \textbf{Suporte a Múltiplos Inquilinos (\textit{Multi-tenancy}):} Investigar como o escalonador adaptativo se comporta em cenários onde múltiplas instâncias do banco de dados competem pelos mesmos recursos de CPU e memória persistente, garantindo isolamento de desempenho.
+\end{itemize}

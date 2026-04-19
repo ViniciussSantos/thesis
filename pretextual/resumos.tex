@@ -1,0 +1,24 @@
+% ---
+% RESUMOS
+% ---
+
+% RESUMO em português
+\setlength{\absparsep}{18pt} % ajusta o espaçamento dos parágrafos do resumo
+\begin{resumo}
+As estruturas de dados \textit{Log-Structured Merge-Trees} (LSM-Trees) tornaram-se o padrão para sistemas de armazenamento de alto desempenho, como o RocksDB. Contudo, o processo de compactação inerente a essa estrutura frequentemente gera contenção de recursos, resultando em fenômenos conhecidos como \textit{compaction stalls} e alta amplificação de escrita (WAF). Com a emergência da Memória Persistente (PMEM), que oferece latência próxima à DRAM e persistência de dados, surge a oportunidade de otimizar esses processos. Este trabalho apresenta o desenvolvimento e a avaliação de um escalonador adaptativo de compactações para o RocksDB operando sobre PMEM Intel Optane. O mecanismo proposto utiliza telemetria em tempo real de CPU e I/O para agendar compactações de forma assíncrona, priorizando a estabilidade do sistema. A metodologia consistiu na execução de uma suíte de \textit{benchmarks} customizada com 25 repetições para garantir validade estatística. Os resultados demonstram que o agendador adaptativo reduziu a latência de cauda P99 em até 4,4\% em cenários de alta concorrência e manteve a integridade do dispositivo com um WAF controlado, sem sacrificar a vazão (\textit{throughput}) bruta. Adicionalmente, evidenciou-se que a afinidade NUMA é um fator crítico, proporcionando ganhos de desempenho superiores a 25\% quando corretamente configurada. Conclui-se que o escalonamento adaptativo é uma solução viável e eficiente para extrair o potencial máximo de tecnologias NVM em bancos de dados modernos.
+
+
+ \textbf{Palavras-chave}: LSM-Tree. Memória Persistente. RocksDB. Escalonamento Adaptativo. Compactação. Desempenho.
+\end{resumo}
+
+% ABSTRACT in english
+\begin{resumo}[Abstract]
+ \begin{otherlanguage*}{english}
+ Log-Structured Merge-Trees (LSM-Trees) have become the gold standard for high-performance storage systems, such as RocksDB. However, the inherent compaction process often triggers resource contention, leading to compaction stalls and high Write Amplification Factor (WAF). The emergence of Persistent Memory (PMEM), which combines near-DRAM latency with non-volatility, presents a unique opportunity for optimization. This thesis presents the development and evaluation of an adaptive compaction scheduler for RocksDB operating on Intel Optane PMEM. The proposed mechanism leverages real-time CPU and I/O telemetry to schedule compactions asynchronously, prioritizing system stability. The methodology involved executing a custom benchmark suite with 25 repetitions to ensure statistical significance. Results show that the adaptive scheduler reduced P99 tail latency by up to 4.4\% in high-concurrency scenarios while maintaining device integrity with a controlled WAF, without sacrificing raw throughput. Furthermore, it was evidenced that NUMA affinity is a critical factor, providing performance gains exceeding 25\% when properly configured. We conclude that adaptive scheduling is a viable and efficient solution to unlock the full potential of NVM technologies in modern database systems.
+
+   \vspace{\onelineskip}
+ 
+   \noindent 
+   \textbf{Keywords}: LSM-Tree. Persistent Memory. RocksDB. Adaptive Scheduling. Compaction. Performance.
+ \end{otherlanguage*}
+\end{resumo}

@@ -1,0 +1,172 @@
+\chapter{Design do Escalonador Adaptativo}
+\label{cap:design}
+
+O \textit{Adaptive Compaction Scheduler} (ACS) é o mecanismo central proposto
+neste trabalho para endereçar as limitações das políticas estáticas descritas no
+capítulo anterior. Enquanto trabalhos anteriores como o
+dCompaction~\cite{dCompaction} e o Spooky~\cite{spooky} propõem estratégias de
+adiamento ou granularização de compactações, eles operam sobre hardware
+convencional e não consideram as características específicas da PMem, em
+especial a assimetria de largura de banda e a sensibilidade à
+concorrência~\cite{van_renen_2020}. O ACS preenche essa lacuna ao incorporar
+telemetria de hardware diretamente na função de decisão de compactação.
+
+Em termos gerais, o ACS é um componente intermediário que se posiciona entre o
+motor de compactação do RocksDB~\cite{rocksdb,rocksdb_wiki} e o hardware
+subjacente de PMem, observando continuamente o estado do sistema e decidindo
+dinamicamente se uma compactação candidata deve ser executada imediatamente,
+adiada ou acelerada. O princípio operacional baseia-se em três premissas: (1)
+compactações executadas durante picos de pressão de I/O são mais prejudiciais ao
+sistema do que o acúmulo temporário de arquivos não compactados na árvore
+LSM~\cite{Sarkar_2021,compaction_policies}; (2) períodos de ociosidade são
+oportunidades para quitar esse débito de forma proativa; e (3) nenhuma compactação
+deve ser postergada indefinidamente, pois a degradação estrutural da árvore impacta
+diretamente a latência de leitura~\cite{Sarkar_2021}. Para operacionalizar essas
+premissas, o ACS é composto por dois módulos principais: o \textbf{Observador de
+Carga}, responsável por mensurar o estado do sistema, e o \textbf{Calculador de
+Utilidade}, responsável por converter essas métricas em decisões de agendamento. A
+implementação concreta desses módulos sobre o RocksDB é detalhada no
+Capítulo~\ref{cap:implementacao}.
+
+
+\section{Arquitetura do Sistema}
+
+O ACS é composto por três módulos principais: o Observador de Carga e o Calculador
+de Utilidade.
+
+\subsection{Observador de Carga}
+
+Este módulo coleta métricas em tempo real provenientes do ambiente de execução.
+Definimos o Fator de Stress do sistema no instante $t$ como:
+
+\begin{equation}
+    \sigma(t) = w_1 \cdot L_{pmem} + w_2 \cdot U_{cpu}
+    \label{eq:stress}
+\end{equation}
+
+\noindent Onde:
+\begin{itemize}
+    \item $\sigma(t) \in [0, 1]$ representa o fator de stress instantâneo;
+    \item $L_{pmem}$ é a latência normalizada de persistência na Memória Persistente;
+    \item $U_{cpu}$ é o percentual de utilização das threads de processamento;
+    \item $w_1$ e $w_2$ são pesos normalizados tais que $w_1 + w_2 = 1$.
+\end{itemize}
+
+A latência bruta de persistência, medida em nanossegundos, é mapeada para o
+intervalo $[0, 1]$ por meio de normalização linear com base em duas constantes
+calibradas para o hardware em uso: a latência de linha de base $\lambda_{base}$,
+que representa o comportamento esperado em condições normais, e a latência máxima
+$\lambda_{max}$, acima da qual o sistema é considerado em stress pleno. A fórmula
+de normalização é:
+
+\begin{equation}
+    L_{pmem} = \text{clip}\left(\frac{\lambda_{raw} - \lambda_{base}}
+    {\lambda_{max} - \lambda_{base}},\ 0,\ 1\right)
+    \label{eq:normalization}
+\end{equation}
+
+\noindent onde $\lambda_{raw}$ é a latência bruta observada. Valores abaixo de
+$\lambda_{base}$ resultam em $L_{pmem} = 0$, e valores acima de $\lambda_{max}$
+são truncados em $L_{pmem} = 1$. Os valores de referência adotados para a Intel Optane DC são
+$\lambda_{\text{base}} = 300$\,ns e $\lambda_{\text{max}} = 3000$\,ns.
+Esses valores foram estabelecidos por meio de calibração empírica no hardware
+descrito na Seção~\ref{sec:ambiente}: $\lambda_{\text{base}}$ corresponde à
+latência de \textit{persist-barrier} medida em condições de carga mínima,
+enquanto $\lambda_{\text{max}}$ corresponde ao patamar a partir do qual
+observou-se saturação consistente dos buffers do controlador de PMem, alinhado
+com os perfis de latência documentados por~\cite{van_renen_2020} para a geração
+Optane utilizada. Ambos os parâmetros são configuráveis para adaptação a
+diferentes gerações de hardware.
+
+Para evitar oscilações abruptas entre janelas de amostragem, os componentes
+$L_{pmem}$ e $U_{cpu}$ são mantidos via média móvel exponencial (EMA). Uma janela
+ociosa não deve colapsar imediatamente o valor de stress, pois a carga real pode
+não ter se dissipado. Assim, cada componente $v$ é atualizado conforme:
+
+\begin{equation}
+    v_{new} = \alpha_{ema} \cdot v_{atual} + (1 - \alpha_{ema}) \cdot v_{anterior}
+    \label{eq:ema}
+\end{equation}
+
+\noindent onde $\alpha_{ema} = 0{,}8$ foi adotado para dar peso dominante à
+observação mais recente, mantendo resposta rápida a mudanças de carga. No caso de
+$L_{pmem}$, a EMA é aplicada independentemente de haver ou não amostras na janela
+corrente, de forma que períodos sem atividade de escrita decaiam gradualmente o
+valor suavizado em direção a zero, refletindo a dissipação real do stress.
+
+\subsection{Função de Utilidade e Pontuação Adaptativa}
+
+A decisão de compactação em LSM-trees tradicionais baseia-se em um score estático
+para cada nível $i$. O ACS introduz a Pontuação Adaptativa:
+
+\begin{equation}
+    A_i = S_i \times (1 - \sigma(t))^{\alpha}
+    \label{eq:adaptive_score}
+\end{equation}
+
+\noindent Onde:
+\begin{itemize}
+    \item $A_i$ é a pontuação adaptativa para o nível $i$;
+    \item $S_i$ é a pontuação de compactação estática original do RocksDB;
+    \item $\alpha$ é o coeficiente de sensibilidade do escalonador ($\alpha > 0$).
+\end{itemize}
+
+O coeficiente $\alpha$ controla a agressividade com que o escalonador suprime
+compactações sob stress. Com $\alpha = 1$, o amortecimento é linear: um stress de
+$0{,}5$ reduz o score à metade. Com $\alpha = 2$ (valor padrão adotado), o
+amortecimento é quadrático, tornando o escalonador significativamente mais
+conservador em condições de carga moderada a alta. Valores maiores, como
+$\alpha = 3$, produzem supressão ainda mais agressiva, reservando compactações
+apenas para situações de necessidade crítica. A escolha de $\alpha$ representa,
+portanto, um trade-off entre a responsividade à carga e o risco de acúmulo de
+débito técnico na árvore LSM.
+
+Em contrapartida, quando o sistema detecta ociosidade, isto é, quando
+$\sigma(t) < \theta_p$, onde $\theta_p$ é um limiar de proatividade configurável,
+o ACS aplica um fator de impulso $\beta > 1$ sobre a pontuação adaptativa:
+
+\begin{equation}
+    A_i^{boost} =
+    \begin{cases}
+        A_i \times \beta & \text{se } \sigma(t) < \theta_p \\
+        A_i              & \text{caso contrário}
+    \end{cases}
+    \label{eq:boost}
+\end{equation}
+
+Esse mecanismo permite que o escalonador aproveite períodos de baixa pressão para
+reduzir proativamente o débito técnico de compactação acumulado durante picos de
+carga, prevenindo degradação futura de leitura.
+
+\subsection{Algoritmo de Decisão}
+
+O processo de seleção segue o seguinte fluxo lógico:
+
+\begin{itemize}
+    \item O Observador atualiza $\sigma(t)$ a cada janela de amostragem.
+    \item Ao final de um flush de MemTable, o Compaction Picker invoca o ACS.
+    \item Para cada nível $i$, o ACS verifica primeiramente se $S_i$ excede um
+    limiar crítico $\tau_c$. Caso positivo, a compactação é forçada
+    independentemente de $\sigma(t)$, evitando degradação catastrófica de leitura.
+    \item Em seguida, o ACS verifica se o número de adiamentos consecutivos do
+    nível $i$ atingiu o orçamento máximo configurado $D_{max}$. Se sim, a
+    compactação também é forçada, prevenindo inanição estrutural durante períodos
+    prolongados de alta carga.
+    \item Caso nenhuma das condições de força se aplique, o ACS calcula
+    $A_i^{boost}$ para todos os níveis elegíveis.
+    \item Se $\exists\, A_i^{boost} > \tau$ (onde $\tau$ é o limiar de urgência),
+    a compactação é agendada com prioridade proporcional a $A_i^{boost}$; caso
+    contrário, é adiada e o contador de adiamentos consecutivos do nível é
+    incrementado.
+\end{itemize}
+
+O design aqui descrito é, intencionalmente, especificado em termos de interfaces
+e contratos entre módulos, de modo a ser independente dos detalhes de implementação
+do RocksDB~\cite{rocksdb_wiki}. O próximo capítulo documenta as decisões de
+engenharia necessárias para integrar esse design à base de código existente,
+incluindo os pontos onde restrições práticas moldaram a arquitetura final, bem como
+os mecanismos de segurança adicionados para garantir a robustez do sistema em
+produção. Em particular, discute-se como a ausência de \textit{scores} por nível
+na política de compactação universal exigiu uma aproximação heurística, e como a
+granularidade por \textit{column family}~\cite{rocksdb} foi preservada para
+garantir isolamento de desempenho entre workloads distintos.

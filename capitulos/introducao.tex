@@ -1,0 +1,58 @@
+\chapter{Introdução}
+
+Nos últimos anos, as estruturas baseadas em \textit{Log-Structured Merge-Tree}
+(LSM-tree) têm se consolidado como a espinha dorsal de muitos sistemas de
+armazenamento orientados a \textit{key-value} e bancos de dados NoSQL, especialmente
+em cenários com alto volume de gravações~\cite{leveldb,rocksdb,lsm_survey}. Isso
+ocorre porque a LSM-tree favorece operações de escrita rápidas por meio de
+\textit{buffering} na memória (\textit{memtable}) e despejos periódicos para
+armazenamento persistente, seguidos de compactações para reorganização dos
+dados~\cite{ONeil1996TheLM,Sarkar_2021}.
+
+Por outro lado, o processo de compactação, essencial para manter a
+ordenação dos dados e a eficiência de leitura, introduz dois problemas
+fundamentais. O primeiro é a \textbf{amplificação de escrita} (\textit{Write
+Amplification Factor}, WAF): como as LSM-trees nunca modificam registros
+existentes diretamente, versões antigas de um mesmo dado precisam ser descartadas
+periodicamente por meio da compactação. Nesse processo, blocos inteiros de dados
+são relidos e reescritos no armazenamento, de modo que cada gravação lógica do
+usuário pode induzir múltiplas gravações físicas, às vezes dezenas delas, dependendo da profundidade da árvore e da intensidade de
+atualizações~\cite{Sarkar_2021,WeiBenchmarkingAA}. O segundo problema é a
+\textbf{contenção de recursos}: durante uma compactação, as \textit{threads}
+responsáveis pelo processo disputam CPU e largura de banda de I/O com as operações
+dos clientes, provocando o fenômeno de \textit{compaction stall}, uma pausa
+perceptível no atendimento de requisições, que eleva drasticamente a latência de
+cauda~\cite{spooky,xanthakis2024vlsmlowtaillatency}.
+
+Com o surgimento das memórias persistentes (por exemplo, NVM/NVDIMM/\textit{byte-addressable
+persistent memory}), novas possibilidades e restrições emergem: a persistência
+torna-se mais barata em latência relativa à SSD, mas a durabilidade
+(\textit{endurance}) e o custo por persistir dados (\textit{fences},
+\textit{flushes}, escritas) requerem cuidado~\cite{van_renen_2020}. Nesse
+contexto, compactações mal agendadas tornam-se duplamente custosas: além de
+gerarem latência para os clientes, aceleram o desgaste físico do dispositivo ao
+induzirem escritas físicas desnecessárias~\cite{revisting_design_lsm,MatrixKV}.
+
+Nesse cenário, o objetivo deste trabalho é formular e investigar um agendador
+adaptativo de compactação para LSM-trees sobre memória persistente, que
+decida de forma dinâmica quando e quais compactações executar com base em
+métricas de custo e pressão do sistema. A meta não é simplesmente reduzir o volume
+de trabalho de compactação, o que comprometeria a integridade estrutural da
+árvore, mas sim \textbf{redistribuí-lo no tempo}, priorizando janelas de baixa
+pressão e postergando operações não críticas durante picos de carga, de modo a
+reduzir a latência de cauda e os fenômenos de \textit{stall} sem comprometer a
+amplificação de escrita nem a durabilidade do dispositivo~\cite{dCompaction}.
+
+As principais perguntas de pesquisa são:
+
+\begin{itemize}
+    \item É possível, com agendamento adaptativo, reduzir a latência de cauda
+    (P99) em cenários de alta concorrência, em comparação a políticas fixas de
+    compactação?
+    \item Quais métricas (pressão de I/O, utilização de CPU, estado da árvore LSM)
+    devem compor uma função de pontuação para priorizar ou adiar compactações?
+    \item O agendamento adaptativo consegue manter o WAF em níveis comparáveis ao
+    modelo estático, provando que a redistribuição temporal não degrada a estrutura?
+    \item Que fatores arquiteturais influenciam
+    significativamente o desempenho de sistemas LSM sobre PMEM?
+\end{itemize}

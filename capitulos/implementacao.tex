@@ -1,0 +1,124 @@
+\chapter{Implementação}\label{cap:implementacao}
+
+Este capítulo documenta as decisões de engenharia tomadas durante a integração do
+ACS ao RocksDB. O foco não é a repetição do design teórico, mas sim os pontos
+onde restrições práticas da base de código existente moldaram a arquitetura final.
+
+\section{Integração ao Fluxo de Compactação do RocksDB}
+
+O RocksDB seleciona compactações por meio de uma hierarquia de classes derivadas
+de \texttt{CompactionPicker}, cuja interface central é o método virtual
+\texttt{PickCompaction} \cite{rocksdb_wiki}. A integração do ACS foi realizada por meio de
+\texttt{AdaptiveLevelCompactionPicker}, que herda de \texttt{LevelCompactionPicker}
+e sobrescreve exclusivamente esse método. A Figura~\ref{fig:acs_arch} ilustra a organização dos componentes do ACS e sua integração ao fluxo de compactação do RocksDB.
+
+\begin{figure}[ht]
+\centering
+\begin{tikzpicture}[
+    node distance=1.2cm and 2.0cm,
+    box/.style={draw, rounded corners, minimum width=3.2cm, minimum height=0.8cm,
+                text centered, font=\small},
+    cloud/.style={draw, ellipse, minimum width=2.8cm, minimum height=0.7cm,
+                  text centered, font=\small},
+    arrow/.style={->, thick},
+    dasharrow/.style={->, thick, dashed}
+]
+
+% RocksDB core
+\node[box, fill=blue!10] (rocksdb) {RocksDB Engine};
+\node[box, fill=blue!10, below=of rocksdb] (memtable) {MemTable / WAL};
+\node[box, fill=blue!10, below=of memtable] (sstable) {SSTables (L0\,--\,Ln)};
+
+% ACS
+\node[box, fill=green!15, right=3.0cm of rocksdb] (picker)
+    {\textbf{AdaptiveLevelCompactionPicker}};
+\node[box, fill=green!15, below=of picker] (observer)
+    {\textbf{LoadObserver} ($\sigma(t)$)};
+\node[box, fill=green!15, below=of observer] (utility)
+    {\textbf{Calculador de Utilidade} ($A^{\text{boost}}_i$)};
+
+% Hardware
+\node[cloud, fill=orange!15, below=2.2cm of sstable] (pmem) {Intel Optane PMem};
+\node[cloud, fill=orange!15, right=of pmem] (cpu) {CPU / Threads};
+
+% Arrows
+\draw[arrow] (rocksdb) -- node[above, font=\tiny]{flush/pick} (picker);
+\draw[arrow] (picker) -- (observer);
+\draw[arrow] (observer) -- (utility);
+\draw[arrow] (utility.west) -- ++(-0.6,0) |- node[left, font=\tiny]{decisão} (rocksdb.west);
+\draw[arrow] (memtable) -- (sstable);
+\draw[arrow] (sstable) -- (pmem);
+\draw[dasharrow] (pmem.north) -- node[right, font=\tiny]{latência} (observer.south);
+\draw[dasharrow] (cpu.north) |- node[right, font=\tiny]{$U_{\text{cpu}}$} (observer.east);
+
+\end{tikzpicture}
+\caption{Arquitetura do ACS integrado ao RocksDB. O \textit{LoadObserver} coleta
+métricas de hardware (latência de PMem e utilização de CPU) e as converte no fator
+de stress $\sigma(t)$, que o \textit{Calculador de Utilidade} usa para derivar a
+pontuação adaptativa $A^{\text{boost}}_i$. A decisão final é devolvida ao
+\textit{CompactionPicker} do RocksDB.}
+\label{fig:acs_arch}
+\end{figure}
+
+
+Essa escolha é deliberada: o ACS controla \emph{se} e \emph{quando} uma
+compactação ocorre, mas não \emph{o quê} é compactado. Uma vez que o algoritmo
+adaptativo decide que uma compactação deve prosseguir, a seleção concreta dos
+arquivos é delegada ao método da classe pai. Isso preserva toda a lógica de
+seleção de arquivos do RocksDB sem modificação, reduzindo o risco de regressões
+e facilitando a manutenção futura.
+
+Para a política de compactação universal (\textit{Universal Compaction}), foi
+implementada uma classe análoga, \texttt{AdaptiveUniversalCompactionPicker}.
+A dificuldade nesse caso decorre de uma diferença fundamental entre as duas
+políticas~\cite{rocksdb_wiki,database_internals}: enquanto a compactação
+\textit{leveled} associa a cada nível um \textit{score} numérico que reflete o
+quanto aquele nível está acima do seu tamanho alvo, tornando a decisão de
+suprimir ou agendar uma compactação diretamente proporcional a esse score,
+a compactação universal não opera com o conceito de níveis independentes com
+tamanhos-alvo definidos. Em vez disso, ela agrupa SSTables por similaridade de
+tamanho e aciona compactações quando o número total de arquivos em L0 ultrapassa
+um limiar configurado~\cite{rocksdb_wiki}.
+
+Para aplicar a lógica adaptativa nesse contexto, foi necessária uma aproximação:
+o número atual de arquivos em L0 dividido pelo limiar de disparo configurado é
+utilizado como \textit{proxy} de score. Formalmente,
+$S_{\text{univ}} = N_{L0} / T_{\text{trigger}}$, onde $N_{L0}$ é a contagem de
+arquivos em L0 e $T_{\text{trigger}}$ é o parâmetro
+\texttt{level0\_file\_num\_compaction\_trigger} do RocksDB~\cite{rocksdb_wiki}.
+Esse valor é então submetido à mesma função de utilidade adaptativa
+$A_i = S_i \times (1 - \sigma(t))^\alpha$ descrita no Capítulo~\ref{cap:design}.
+A heurística é uma simplificação consciente e adequada para o escopo atual do
+trabalho; ela captura a urgência relativa da compactação, mas perde granularidade
+por não distinguir o impacto de compactações em sub-grupos de tamanho diferentes,
+o que pode resultar em menor precisão na supressão adaptativa para
+\textit{workloads} que dependem exclusivamente de compactação
+universal~\cite{Sarkar_2021,compaction_policies}.
+
+\section{Infraestrutura de Monitoramento}
+
+O \texttt{LoadObserver} é o componente responsável por coletar e suavizar as
+métricas de hardware que alimentam o cálculo de $\sigma(t)$. Uma decisão
+relevante de integração diz respeito à sua propriedade: o observador reside
+dentro de \texttt{ColumnFamilyData}, e não no nível da instância de banco de
+dados. Isso significa que cada column family possui rastreamento de stress
+independente, o que é consistente com que diferentes column families
+podem ter perfis de escrita e políticas de compactação distintos \cite{rocksdb}.
+
+Essa escolha impõe uma restrição importante: os parâmetros que configuram o
+\texttt{LoadObserver} durante sua inicialização, como os pesos $w_1$ e $w_2$
+e o coeficiente de sensibilidade $\alpha$, precisam estar disponíveis no momento
+da construção do objeto \texttt{ColumnFamilyData}. A alternativa de permitir
+reconfiguração em tempo de execução exigiria reinicialização do observador e do
+picker, com impacto sobre o estado acumulado de stress e os contadores de
+adiamento, o que foi considerado fora do escopo deste trabalho.
+
+\section{Mecanismo de Segurança contra Inanição}
+
+O algoritmo de decisão descrito no capítulo anterior introduz o orçamento de
+adiamentos consecutivos $D_{max}$ como proteção contra inanição estrutural. A
+implementação desse mecanismo utiliza um mapa de contadores indexados pela chave
+composta \texttt{cf\_name:level}, mantido internamente pelo
+\texttt{AdaptiveCompactionPicker}. Quando uma compactação é forçada por
+esgotamento do orçamento ou por superação do limiar crítico $\tau_c$, o contador
+do nível correspondente é zerado. Quando é adiada, o contador é incrementado.

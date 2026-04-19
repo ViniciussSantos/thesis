@@ -1,0 +1,15 @@
+\chapter{Formulação do Problema e Métricas}\label{cap:proposta}
+
+\section{Definição do Problema}
+O problema central abordado neste trabalho é a rigidez das políticas de compactação tradicionais em LSM-trees diante da variabilidade da Memória Persistente. Em motores de armazenamento convencionais, os gatilhos de compactação são puramente reativos e baseados em limiares estáticos (por exemplo, número de arquivos no nível L0 ou tamanho total de um nível). Essa abordagem falha em sistemas baseados em PMem por dois motivos principais:
+
+\begin{itemize}
+    \item Sensibilidade à Latência de Escrita: A PMem, embora rápida, possui uma largura de banda de escrita assimétrica e limitada se comparada à leitura. Compactações agressivas durante picos de carga de escrita geram contenção no controlador de memória, levando ao fenômeno de write stall (parada total da ingestão de dados). 
+    \item Ignorância do Estado do Sistema: As regras estáticas não consideram o custo marginal de uma compactação em um dado momento. Uma compactação iniciada durante uma saturação de banda pode ser mais prejudicial ao desempenho global do que o aumento temporário na amplificação de leitura causado pelo adiamento dessa mesma compactação.
+\end{itemize}
+
+Dessa forma, o problema reside em como transformar o processo de compactação de um "mal necessário" executado às cegas em um processo consciente do hardware e da carga de trabalho, que maximize a vazão (throughput) sem comprometer a integridade da estrutura da árvore LSM.
+
+\section{Proposta de Solução}
+
+Propõe-se o Adaptive Compaction Scheduler (ACS), um escalonador de compactação orientado a feedback. O ACS substitui os gatilhos fixos por uma função de utilidade dinâmica. Ele monitora métricas de hardware (latência de persist-barriers) e métricas da árvore LSM para decidir o grau de concorrência e a prioridade das tarefas, adiando compactações não críticas durante períodos de pressão extrema na PMem e acelerando-as quando o sistema detecta ociosidade.

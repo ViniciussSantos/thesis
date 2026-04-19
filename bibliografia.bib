@@ -1,0 +1,281 @@
+%% PPGCC - CCN - UFPI
+
+%% This BibTeX bibliography file was created using BibDesk.
+%% http://bibdesk.sourceforge.net/
+%% Exemplo de arquivo .bib a ser utilizado para gerar a Biliografia
+
+%% Quando for no Google Scholar, clique em bibtex na citação e copie o código pra colar aqui
+
+
+ @inproceedings{MatrixKV,
+author = {Yao, Ting and Zhang, Yiwen and Wan, Jiguang and Cui, Qiu and Tang, Liu and Jiang, Hong and Xie, Changsheng and He, Xubin},
+title = {MatrixKV: reducing write stalls and write amplification in LSM-tree based KV stores with a matrix container in NVM},
+year = {2020},
+isbn = {978-1-939133-14-4},
+publisher = {USENIX Association},
+address = {USA},
+booktitle = {Proceedings of the 2020 USENIX Conference on Usenix Annual Technical Conference},
+articleno = {2},
+numpages = {15},
+series = {USENIX ATC'20}
+}
+@article{FlatLSM,
+author = {He, Kewen and An, Yujie and Luo, Yijing and Liu, Xiaoguang and Wang, Gang},
+title = {FlatLSM: Write-Optimized LSM-Tree for PM-Based KV Stores},
+year = {2023},
+issue_date = {May 2023},
+publisher = {Association for Computing Machinery},
+address = {New York, NY, USA},
+volume = {19},
+number = {2},
+issn = {1553-3077},
+url = {https://doi.org/10.1145/3579855},
+doi = {10.1145/3579855},
+journal = {ACM Trans. Storage},
+month = mar,
+articleno = {19},
+numpages = {26},
+keywords = {LSM-Tree, key-value stores, Persistent memory}
+}
+
+@inproceedings{SLM-DB,
+author = {Kaiyrakhmet, Olzhas and Lee, Songyi and Nam, Beomseok and Noh, Sam H. and Choi, Young-Ri},
+title = {SLM-DB: single-level key-value store with persistent memory},
+year = {2019},
+isbn = {9781931971485},
+publisher = {USENIX Association},
+address = {USA},
+booktitle = {Proceedings of the 17th USENIX Conference on File and Storage Technologies},
+pages = {191–204},
+numpages = {14},
+location = {Boston, MA, USA},
+series = {FAST'19}
+}
+
+@article{revisting_design_lsm,
+author = {Yan, Baoyue and Cheng, Xuntao and Jiang, Bo and Chen, Shibin and Shang, Canfang and Wang, Jianying and Huang, Gui and Yang, Xinjun and Cao, Wei and Li, Feifei},
+title = {Revisiting the design of LSM-tree Based OLTP storage engine with persistent memory},
+year = {2021},
+issue_date = {June 2021},
+publisher = {VLDB Endowment},
+volume = {14},
+number = {10},
+issn = {2150-8097},
+url = {https://doi.org/10.14778/3467861.3467875},
+doi = {10.14778/3467861.3467875},
+journal = {Proc. VLDB Endow.},
+month = jun,
+pages = {1872–1885},
+numpages = {14}
+}
+
+@article{dCompaction,
+author = {Pan, Fengfeng and Yue, Yinliang and Xiong, Jin},
+title = {dCompaction: Delayed Compaction for the LSM-Tree},
+year = {2017},
+issue_date = {December  2017},
+publisher = {Kluwer Academic Publishers},
+address = {USA},
+volume = {45},
+number = {6},
+issn = {0885-7458},
+url = {https://doi.org/10.1007/s10766-016-0472-z},
+doi = {10.1007/s10766-016-0472-z},
+journal = {Int. J. Parallel Program.},
+month = dec,
+pages = {1310–1325},
+numpages = {16},
+keywords = {Delayed compaction, Key-value store, LSM-tree, Real compaction, Virtual compaction, Write amplification}
+}
+
+@article{SuccinctKV,
+author = {Zhang, Yinan and Yang, Shun and Hu, Huiqi and Yang, Chengcheng and Cai, Peng and Zhou, Xuan},
+title = {SuccinctKV: a CPU-efficient LSM-tree Based KV Store with Scan-based Compaction},
+year = {2024},
+issue_date = {December 2024},
+publisher = {Association for Computing Machinery},
+address = {New York, NY, USA},
+volume = {21},
+number = {4},
+issn = {1544-3566},
+url = {https://doi.org/10.1145/3695873},
+doi = {10.1145/3695873},
+journal = {ACM Trans. Archit. Code Optim.},
+month = nov,
+articleno = {90},
+numpages = {26},
+keywords = {Key-value store, Log-structured merge tree, CPU efficiency, compaction, range query}
+}
+
+@misc{xanthakis2024vlsmlowtaillatency,
+      title={vLSM: Low tail latency and I/O amplification in LSM-based KV stores}, 
+      author={Giorgos Xanthakis and Antonios Katsarakis and Giorgos Saloustros and Angelos Bilas},
+      year={2024},
+      eprint={2407.15581},
+      archivePrefix={arXiv},
+      primaryClass={cs.DB},
+      url={https://arxiv.org/abs/2407.15581}, 
+}
+
+%% LSM fundamentals, compaction fundamentals and building a compaction algorithm
+@article{Sarkar_2021,
+   title={Constructing and analyzing the LSM compaction design space},
+   volume={14},
+   ISSN={2150-8097},
+   url={http://dx.doi.org/10.14778/3476249.3476274},
+   DOI={10.14778/3476249.3476274},
+   number={11},
+   journal={Proceedings of the VLDB Endowment},
+   publisher={Association for Computing Machinery (ACM)},
+   author={Sarkar, Subhadeep and Staratzis, Dimitris and Zhu, Ziehen and Athanassoulis, Manos},
+   year={2021},
+   month=jul, pages={2216–2229} }
+
+%% persistent memory fundamentals
+@article{van_renen_2020,
+author = {van Renen, Alexander and Vogel, Lukas and Leis, Viktor and Neumann, Thomas and Kemper, Alfons},
+title = {Building blocks for persistent memory: How to get the most out of your new memory?},
+year = {2020},
+issue_date = {Nov 2020},
+publisher = {Springer-Verlag},
+address = {Berlin, Heidelberg},
+volume = {29},
+number = {6},
+issn = {1066-8888},
+url = {https://doi.org/10.1007/s00778-020-00622-9},
+doi = {10.1007/s00778-020-00622-9},
+journal = {The VLDB Journal},
+month = sep,
+pages = {1223–1241},
+numpages = {19},
+keywords = {Databases, Systems, Persistent memory}
+}
+
+% LSM fundamentals
+@article{ONeil1996TheLM,
+  title={The log-structured merge-tree (LSM-tree)},
+  author={Patrick E. O'Neil and Edward Y. C. Cheng and Dieter Gawlick and Elizabeth J. O'Neil},
+  journal={Acta Informatica},
+  year={1996},
+  volume={33},
+  pages={351-385},
+  url={https://api.semanticscholar.org/CorpusID:12627452}
+}
+
+@misc{leveldb,
+  author = {Sanjay Ghemawat and Jeff Dean and others},
+  title = {LevelDB: A fast persistent key-value store},
+  year = {2011},
+  howpublished = {Google Open Source Blog / Code},
+  url = {https://opensource.googleblog.com/2011/07/leveldb-fast-persistent-key-value-store.html},
+  note = {Descrição da implementação LevelDB; uso industrial do LSM.}
+}
+
+@article{rocksdb,
+author = {Dong, Siying and Kryczka, Andrew and Jin, Yanqin and Stumm, Michael},
+title = {RocksDB: Evolution of Development Priorities in a Key-value Store Serving Large-scale Applications},
+year = {2021},
+issue_date = {November 2021},
+publisher = {Association for Computing Machinery},
+address = {New York, NY, USA},
+volume = {17},
+number = {4},
+issn = {1553-3077},
+url = {https://doi.org/10.1145/3483840},
+doi = {10.1145/3483840},
+journal = {ACM Trans. Storage},
+month = oct,
+articleno = {26},
+numpages = {32},
+keywords = {databases, compaction, SSD, RocksDB, large-scale applications, Key-value stores}
+}
+%% measuring and benchmarking analysis
+@inproceedings{Lim2016,
+  author = {Lim, Hyeontaek and Andersen, David G. and Kaminsky, Michael},
+  title = {Towards Accurate and Fast Evaluation of Multi-Stage Log-Structured Designs},
+  booktitle = {14th USENIX Conference on File and Storage Technologies (FAST '16)},
+  year = {2016},
+  pages = {149--166},
+  publisher = {USENIX Association},
+  address = {Santa Clara, CA, USA}
+}
+%% use to define compaction and its issues and anything related
+@article{spooky,
+author = {Dayan, Niv and Weiss, Tamar and Dashevsky, Shmuel and Pan, Michael and Bortnikov, Edward and Twitto, Moshe},
+title = {Spooky: granulating LSM-tree compactions correctly},
+year = {2022},
+issue_date = {July 2022},
+publisher = {VLDB Endowment},
+volume = {15},
+number = {11},
+issn = {2150-8097},
+url = {https://doi.org/10.14778/3551793.3551853},
+doi = {10.14778/3551793.3551853},
+journal = {Proc. VLDB Endow.},
+month = jul,
+pages = {3071–3084},
+numpages = {14}
+}
+
+%% good for talking about write amplification and compaction in depth
+@inproceedings{WeiBenchmarkingAA,
+  title={Benchmarking, Analyzing, and Optimizing Write Amplification of Partial Compaction in RocksDB},
+  author={Ran Wei and Zichen Zhu and Andrew Kryczka and Jay Zhuang and Manos Athanassoulis},
+  url={https://api.semanticscholar.org/CorpusID:273795743}
+}
+
+
+%% good for talking about LSM  and anything relatedd to it in depth
+@article{lsm_survey,
+  author       = {Chen Luo and
+                  Michael J. Carey},
+  title        = {LSM-based Storage Techniques: {A} Survey},
+  journal      = {CoRR},
+  volume       = {abs/1812.07527},
+  year         = {2018},
+  url          = {http://arxiv.org/abs/1812.07527},
+  eprinttype    = {arXiv},
+  eprint       = {1812.07527},
+  timestamp    = {Mon, 19 Dec 2022 20:39:10 +0100},
+  biburl       = {https://dblp.org/rec/journals/corr/abs-1812-07527.bib},
+  bibsource    = {dblp computer science bibliography, https://dblp.org}
+}
+
+%% good to talk about compaction, compaction strategies and building a compaction algorithm in depth
+@article{compaction_policies,
+author = {Wang, Hengrui and Qiu, Jiansheng and Yuan, Fangzhou and Zhang, Huanchen},
+title = {Rethinking The Compaction Policies in LSM-trees},
+year = {2025},
+issue_date = {June 2025},
+publisher = {Association for Computing Machinery},
+address = {New York, NY, USA},
+volume = {3},
+number = {3},
+url = {https://doi.org/10.1145/3725344},
+doi = {10.1145/3725344},
+journal = {Proc. ACM Manag. Data},
+month = jun,
+articleno = {207},
+numpages = {26},
+keywords = {concurrency control, dynamic programming, lsm-trees, optimization}
+}
+
+%% LSM fundamentals 
+@book{database_internals,
+author = {Petrov, Alex},
+title = {Database Internals: A Deep Dive into How Distributed Data Systems Work},
+year = {2019},
+isbn = {1492040347},
+publisher = {O'Reilly Media, Inc.},
+edition = {1st},
+}
+
+%% RocksDB wiki
+@misc{rocksdb_wiki,
+  author       = {{Facebook, Inc.} and {RocksDB Contributors}},
+  title        = {RocksDB Wiki},
+  howpublished = {\url{https://github.com/facebook/rocksdb/wiki}},
+  year         = {2023},
+  note         = {Accessed: 2026-01}
+}
+
