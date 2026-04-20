@@ -27,7 +27,7 @@ Um aspecto arquitetural profundo na avaliação de bancos de dados modernos em P
 
 A análise direta dos gráficos da figura \ref{fig:bias_comparison_throughput} e da tabela \ref{tab:bias_throughput} comprova a premissa de sensibilidade da arquitetura. Em cargas altamente concorrentes e mistas (gráficos \ref{fig:bias_comparison_throughput_burst} e \ref{fig:bias_comparison_throughput_mixed}), o ambiente livre (\textit{Unpinned}) restringe a vazão em torno de 526 mil operações por segundo. Quando forçamos a afinidade com a CPU, garantindo que o acesso à memória ocorra localmente ao nó NUMA da Intel Optane, o rendimento atinge a marca de $\sim$663 mil operações por segundo (aumento superior a 25\%).  
 
-Este ganho superior a 25\% ocorre porque a PMEM atua como um dispositivo dependente de topologia \textit{Non-Uniform Memory Access} (NUMA). No cenário \textit{Unpinned}, a constante migração de contexto do SO expõe o RocksDB a ciclos excessivos de comunicação inter-soquetes. Note que nos gráficos \ref{fig:bias_comparison_throughput_latency}, \ref{fig:bias_comparison_throughput_scaling} e \ref{fig:bias_comparison_throughput_waf} também mostram pouca diferença entre os ambientes. O viés de \textit{pinning}, portanto, não invalida o ensaio; muito pelo contrário, ele representa o cenário ótimo indispensável para sistemas de bancos de dados orientados a desempenho que desejam extrair o real limite das memórias endereçáveis por \textit{byte}. O restante desta discussão terá como foco primordial os resultados \textit{Pinned}, dada a sua representatividade para configurações corporativas de produção.
+Este ganho superior a 25\% ocorre porque a PMEM atua como um dispositivo dependente de topologia \textit{Non-Uniform Memory Access} (NUMA). No cenário \textit{Unpinned}, a constante migração de contexto do SO expõe o RocksDB a ciclos excessivos de comunicação inter-soquetes. Note que os gráficos \ref{fig:bias_comparison_throughput_latency}, \ref{fig:bias_comparison_throughput_scaling} e \ref{fig:bias_comparison_throughput_waf} também mostram pouca diferença entre os ambientes. O viés de \textit{pinning}, portanto, não invalida o ensaio; muito pelo contrário, ele representa o cenário ótimo indispensável para sistemas de bancos de dados orientados a desempenho que desejam extrair o real limite das memórias endereçáveis por \textit{byte}. O restante desta discussão terá como foco primordial os resultados \textit{Pinned}, dada a sua representatividade para configurações corporativas de produção.
 
 \begin{figure}[h]
 \centering
@@ -44,45 +44,78 @@ Este ganho superior a 25\% ocorre porque a PMEM atua como um dispositivo depende
 \caption{Comparativo de Vazão Média (ops/sec) com Intervalo de Confiança (95\%)}
 \label{tab:bias_throughput}
 \resizebox{\textwidth}{!}{
-\begin{tabular}{l|cc|cc}
+\begin{tabular}{|l|cc|cc|}
 \hline
 \textbf{Configuração} & \textbf{Média Unpinned} & \textbf{IC 95\% Unpinned} & \textbf{Média Pinned} & \textbf{IC 95\% Pinned} \\ \hline
-Adpt-mixed & 526.996,0 & \pm 2.055,90 & 663.940,0 & \pm 3.450,21 \\
+Base-waf & 184.046,0 & \pm 1.917,61 & 185.932,0 & \pm 1.270,85 \\
+Adpt-alpha0.5 & 182.425,0 & \pm 1.378,32 & 183.787,0 & \pm 1.994,98 \\
+Adpt-alpha1.0 & 182.034,0 & \pm 2.149,34 & 183.072,0 & \pm 1.539,22 \\
+Adpt-alpha1.5 & 182.169,0 & \pm 1.953,45 & 185.415,0 & \pm 2.229,77 \\
+Adpt-alpha2.0 & 185.175,0 & \pm 2.044,09 & 183.950,0 & \pm 1.567,17 \\
+Adpt-alpha3.0 & 185.509,0 & \pm 1.700,96 & 183.834,0 & \pm 2.063,78 \\
+Adpt-alpha4.0 & 185.809,0 & \pm 1.701,20 & 186.560,0 & \pm 1.449,06 \\
+Base-latency & 73.627,9 & \pm 741,33 & 73.499,8 & \pm 575,32 \\
+Adpt-latency & 73.867,6 & \pm 579,44 & 73.337,4 & \pm 549,92 \\
+Base-scaling\_1 & 287.219,0 & \pm 7.307,81 & 283.452,0 & \pm 9.127,27 \\
+Adpt-scaling\_1 & 248.474,0 & \pm 8.587,54 & 253.442,0 & \pm 8.076,29 \\
+Base-scaling\_4 & 210.335,0 & \pm 2.225,50 & 212.720,0 & \pm 1.750,42 \\
+Adpt-scaling\_4 & 207.048,0 & \pm 2.124,19 & 211.837,0 & \pm 1.813,29 \\
+Base-scaling\_16 & 173.664,0 & \pm 1.945,37 & 181.294,0 & \pm 1.278,16 \\
+Adpt-scaling\_16 & 172.721,0 & \pm 1.330,60 & 183.446,0 & \pm 1.343,61 \\
 Base-mixed & 529.296,0 & \pm 2.260,96 & 662.434,0 & \pm 3.587,16 \\
-Adpt-burst & 94.072,6  & \pm 612,85   & 94.312,6  & \pm 532,49   \\
-Base-burst & 94.720,8  & \pm 598,13   & 94.468,5  & \pm 486,40   \\ \hline
+Adpt-mixed & 526.996,0 & \pm 2.055,90 & 663.940,0 & \pm 3.450,21 \\
+Base-burst & 94.720,8 & \pm 598,13 & 94.468,5 & \pm 486,40 \\
+Adpt-burst & 94.072,6 & \pm 612,85 & 94.312,6 & \pm 532,49 \\ \hline
 \end{tabular}
 }
 \end{table}
 
+\FloatBarrier
 \section{Comportamento da Vazão Sistêmica (Throughput)}
-O gráfico \ref{fig:throughput_pinned} (\textit{Pinned Environment}) com os dados que estão descritos na Tabela \ref{tab:throughput_pinned} evidencia o desempenho bruto dos mecanismos sob diferentes variações paramétricas do agendador e do grau de paralelismo. Uma métrica primordial de aceitação de qualquer componente adaptativo reside na confirmação de que sua \enquote{Função de Utilidade}, responsável por calcular o peso dinâmico de PMem e de CPU, não gere \textit{overhead} destrutivo.
+Os gráficos na figura \ref{fig:throughput_pinned} (\textit{Pinned Environment}) com os dados que estão descritos na Tabela \ref{tab:throughput_pinned} evidencia o desempenho bruto dos mecanismos sob diferentes variações paramétricas do agendador e do grau de paralelismo. Uma métrica primordial de aceitação de qualquer componente adaptativo reside na confirmação de que sua \enquote{Função de Utilidade}, responsável por calcular o peso dinâmico de PMem e de CPU, não gere \textit{overhead} destrutivo.
 
-\begin{figure}[h]
+\begin{figure}[htbp]
 \centering
-\includegraphics[scale=0.5]{figs/graphs/pinned/throughput.png}
-\caption{Vazão geral (operações por segundo) em todas as configurações. Quanto maior, melhor.}
-\label{fig:throughput_pinned}
+\subfloat[Vazão geral (operações por segundo) - Burst.\label{fig:throughput_pinned_burst}]{\includegraphics[width=0.5\textwidth]{figs/graphs/pinned/throughput_burst.png}}\hfill
+\subfloat[Vazão geral (operações por segundo) - Mixed Workload.\label{fig:throughput_pinned_mixed}]{\includegraphics[width=0.5\textwidth]{figs/graphs/pinned/throughput_mixed.png}}\hfill
+\subfloat[Vazão geral (operações por segundo) - Scaling.\label{fig:throughput_pinned_scaling}]{\includegraphics[width=0.5\textwidth]{figs/graphs/pinned/throughput_scaling.png}}\hfill
+\subfloat[Vazão geral (operações por segundo) - Latency.\label{fig:throughput_pinned_latency}]{\includegraphics[width=0.5\textwidth]{figs/graphs/pinned/throughput_latency.png}}\hfill
+\subfloat[Vazão geral (operações por segundo) - WAF.\label{fig:throughput_pinned_waf}]{\includegraphics[width=0.5\textwidth]{figs/graphs/pinned/throughput_waf.png}}\hfill
+\caption{Vazão geral (operações por segundo) em todas as configurações. Quanto maior, melhor.} \label{fig:throughput_pinned}
 \end{figure}
 
 \begin{table}[h]
 \centering
 \caption{Resumo Estatístico de Throughput (Operações/seg) - Ambiente Pinned}
 \label{tab:throughput_pinned}
-\begin{tabular}{lcc}
+\begin{tabular}{|l|c|c|}
 \hline
-\textbf{Configuração} & \textbf{Média (ops/sec)} & \textbf{Desvio Padrão} \\ \hline
-Base-mixed & 662.433 & 9.319 \\
-Adpt-mixed & 663.940 & 9.174 \\
-Base-burst & 94.468 & 1.266 \\
-Adpt-burst & 94.312 & 1.430 \\
-Base-scaling\_16 & 181.293 & 3.428 \\
-Adpt-scaling\_16 & 183.445 & 3.396 \\ \hline
+\textbf{Configuração} & \textbf{Média (ops/sec)} & \textbf{IC 95\%} \\ \hline
+Base-waf & 185.932,0 & \pm 1.270,85 \\
+Adpt-alpha0.5 & 183.787,0 & \pm 1.994,98 \\
+Adpt-alpha1.0 & 183.072,0 & \pm 1.539,22 \\
+Adpt-alpha1.5 & 185.415,0 & \pm 2.229,77 \\
+Adpt-alpha2.0 & 183.950,0 & \pm 1.567,17 \\
+Adpt-alpha3.0 & 183.834,0 & \pm 2.063,78 \\
+Adpt-alpha4.0 & 186.560,0 & \pm 1.449,06 \\
+Base-latency & 73.499,8 & \pm 575,32 \\
+Adpt-latency & 73.337,4 & \pm 549,92 \\
+Base-scaling\_1 & 283.452,0 & \pm 9.127,27 \\
+Adpt-scaling\_1 & 253.442,0 & \pm 8.076,29 \\
+Base-scaling\_4 & 212.720,0 & \pm 1.750,42 \\
+Adpt-scaling\_4 & 211.837,0 & \pm 1.813,29 \\
+Base-scaling\_16 & 181.294,0 & \pm 1.278,16 \\
+Adpt-scaling\_16 & 183.446,0 & \pm 1.343,61 \\
+Base-mixed & 662.434,0 & \pm 3.587,16 \\
+Adpt-mixed & 663.940,0 & \pm 3.450,21 \\
+Base-burst & 94.468,5 & \pm 486,40 \\
+Adpt-burst & 94.312,6 & \pm 532,49 \\ \hline
 \end{tabular}
 \end{table}
 
 Observamos que o algoritmo Adaptativo opera estatisticamente em paridade com o modelo Base do RocksDB, apresentando sutil superioridade técnica no cenário de uso misto e no máximo nível de paralelismo (\textit{scaling\_16}). Tais evidências indicam que a Função de Utilidade de CPU/PMEM possui baixa sobrecarga (\textit{overhead}) computacional, permitindo que a inteligência de observabilidade seja embarcada sem punir a velocidade bruta da aplicação.
 
+\FloatBarrier
 \section{Mitigação de Compaction Stalls e Latência de Cauda (P99)}
 
 Quando tarefas de compactação das estruturas inferiores da árvore LSM concorrem por processador e barramento de memória I/O com os pedidos de usuários, ocorrem as chamadas "paradas de compactação" (\textit{compaction stalls}). Para sistemas de missão crítica, a latência do 99º percentil (P99) dita a percepção de desempenho. Os resultados estão presentes no gráfico \ref{fig:latency_p99_pinned} (\textit{Pinned Environment}) e na tabela \ref{tab:latency_p99}.
@@ -96,22 +129,41 @@ Quando tarefas de compactação das estruturas inferiores da árvore LSM concorr
 
 \begin{table}[h]
 \centering
-\caption{Latência de Cauda P99 ($\mu s$) - Ambiente Pinned}
+\caption{Latência de Cauda P99 para os casos mais ($\mu s$) - Ambiente Pinned}
 \label{tab:latency_p99}
-\begin{tabular}{lcc}
+\begin{tabular}{|l|c|c|}
 \hline
-\textbf{Configuração} & \textbf{Média ($\mu s$)} & \textbf{Desvio Padrão} \\ \hline
-Base-scaling\_8 & 217,88 & 38,15 \\
-Adpt-scaling\_8 & 240,28 & 17,58 \\
-Base-scaling\_16 & 531,03 & 54,17 \\
-Adpt-scaling\_16 & 507,64 & 38,94 \\
-Base-latency & 364,28 & 14,61 \\
-Adpt-latency & 388,31 & 17,55 \\ \hline
+\textbf{Configuração} & \textbf{Média ($\mu s$)} & \textbf{IC 95\%} \\ \hline
+Base-waf        & 10.7256 & \pm 0.5872  \\
+Adpt-alpha0.5   &  13.4624 & \pm 0.1740  \\
+Adpt-alpha1.0   & 13.6384 & \pm 0.2444  \\
+Adpt-alpha1.5   & 13.2360 & \pm 0.2912  \\
+Adpt-alpha2.0   & 13.1292 & \pm 0.3256  \\
+Adpt-alpha3.0   & 13.0800 & \pm 0.2528  \\
+Adpt-alpha4.0   & 12.9400 & \pm 0.3116  \\
+Base-latency    & 364.289 & \pm 5.5181  \\
+Adpt-latency    & 388.312 & \pm 6.9305  \\
+Base-scaling\_1  & 11.8220 & \pm 1.0353  \\
+Adpt-scaling\_1  & 14.3784 & \pm 0.9148  \\
+Base-scaling\_2  & 20.5176 & \pm 1.0396  \\
+Adpt-scaling\_2  & 24.8804 & \pm 1.1764  \\
+Base-scaling\_4  & 37.2020 & \pm 1.4292  \\
+Adpt-scaling\_4  & 44.4000 & \pm 1.3652  \\
+Base-scaling\_8  & 217.886 & \pm 13.9745 \\
+Adpt-scaling\_8  & 240.288 & \pm 6.7476  \\
+Base-scaling\_16 & 531.030 & \pm 21.7343 \\
+Adpt-scaling\_16 & 507.645 & \pm 14.5149 \\
+Base-mixed      & 45.5712 & \pm 0.2760  \\
+Adpt-mixed      & 45.6148 & \pm 0.1748  \\
+Base-burst      & 845.807 & \pm 19.8313 \\
+Adpt-burst      & 864.067 & \pm 17.5330 \\ \hline
 \end{tabular}
+}
 \end{table}
 
 A intervenção do nosso escalonador mostra seu brilho na contenção de degradações sob estresse massivo extremo. No teste com 16 \textit{threads} concorrentes (\textit{scaling\_16}), a mecânica de agendamento ingênua do sistema estático alcançou um engasgo perigoso, elevando o percentil P99 para 531,03 $\mu s$. A aplicação do algoritmo adaptativo reduziu com consistência essa latência para 507,64 $\mu s$, e mais importante, diminuiu agressivamente a volatilidade e o desvio padrão da latência (de $\pm 54,17 \mu s$ para $\pm 38,94 \mu s$). Isso certifica que o sistema consegue \enquote{adiar} ou gerenciar a prioridade do I/O, garantindo uma previsibilidade temporal muito maior para clientes externos.
 
+\FloatBarrier
 \section{Eficiência das Compactações e Custo Computacional}
 
 Um questionamento vital decorre das otimizações de latência: estaríamos diminuindo o trabalho de fundo (criando lixo excessivo) para melhorar o tempo de resposta superficial? A análise conjunta dos gráficos \ref{fig:compactio_cpu_pinned_a}, \ref{fig:compaction_count_pinned_b}, \ref{fig:compaction_ratio_c}  contrapõe essa preocupação com base em fatos quantitativos. 
@@ -128,15 +180,32 @@ Um questionamento vital decorre das otimizações de latência: estaríamos dimi
 \centering
 \caption{Métricas de Esforço de Compactação (Ambiente Pinned)}
 \label{tab:compaction_effort}
-\begin{tabular}{l|cc|cc}
+\begin{tabular}{|l|cc|cc|}
 \hline
-\textbf{Configuração} & \textbf{Contagem (Total)} & \textbf{Desvio} & \textbf{CPU Gasto (seg)} & \textbf{Desvio} \\ \hline
-Base-burst & 437,84 & 6,34 & 133,37 & 2,96 \\
-Adpt-burst & 439,04 & 8,47 & 134,29 & 2,98 \\
-Base-latency & 177,24 & 4,78 & 52,28 & 1,79 \\
-Adpt-latency & 177,76 & 4,30 & 52,40 & 1,43 \\
-Base-mixed & 14,12 & 0,33 & 3,29 & 0,26 \\
-Adpt-mixed & 14,08 & 0,27 & 3,23 & 0,20 \\ \hline
+\textbf{Configuração} & \textbf{Contagem (Total)} & \textbf{IC 95\%} & \textbf{Tempo de CPU (seg)} & \textbf{IC 95\%}} \\ \hline
+Base-waf        & 16.72  & \pm 0.200 & 3.3324  & \pm 0.1316\\
+Adpt-alpha0.5   & 16.64  & \pm 0.240 & 3.3144  & \pm 0.1744\\
+Adpt-alpha1.0   & 16.84  & \pm 0.160 & 3.4592  & \pm 0.1088\\
+Adpt-alpha1.5   & 16.64  & \pm 0.200 & 3.2896  & \pm 0.1536\\
+Adpt-alpha2.0   & 16.64  & \pm 0.240 & 3.3336  & \pm 0.1808\\
+Adpt-alpha3.0   & 16.92  & \pm 0.080 & 3.4420  & \pm 0.0932\\
+Adpt-alpha4.0   & 16.40  & \pm 0.320 & 3.0772  & \pm 0.2340\\
+Base-latency    & 177.24 & \pm 1.800 & 52.2864 & \pm 0.6916\\
+Adpt-latency    & 177.76 & \pm 1.640 & 52.4020 & \pm 0.5396\\
+Base-scaling\_1  & 3.00   & \pm 0.000 & 0.2700  & \pm 0.0112\\
+Adpt-scaling\_1  & 3.00   & \pm 0.000 & 0.3052  & \pm 0.0092\\
+Base-scaling\_2  & 9.00   & \pm 0.000 & 1.1912  & \pm 0.0236\\
+Adpt-scaling\_2  & 9.00   & \pm 0.000 & 1.1912  & \pm 0.0236\\
+Base-scaling\_4  & 20.04  & \pm 0.120 & 3.2460  & \pm 0.1188\\
+Adpt-scaling\_4  & 19.84  & \pm 0.120 & 3.1424  & \pm 0.1048\\
+Base-scaling\_8  & 46.72  & \pm 0.440 & 10.4400 & \pm 0.1820\\
+Adpt-scaling\_8  & 47.16  & \pm 0.360 & 10.7808 & \pm 0.1712\\
+Base-scaling\_16 & 102.20 & \pm 0.560 & 22.2212 & \pm 0.2856\\
+Adpt-scaling\_16 & 101.72 & \pm 0.520 & 21.8260 & \pm 0.2952\\
+Base-mixed      & 14.12  & \pm 0.120 & 3.2964  & \pm 0.1108\\
+Adpt-mixed      & 14.08  & \pm 0.120 & 3.2312  & \pm 0.0828\\
+Base-burst      & 437.84 & \pm 2.400 & 133.373 & \pm 1.1284\\
+Adpt-burst      & 439.04 & \pm 3.321 & 134.298 & \pm 1.1808\\ \hline
 \end{tabular}
 \end{table}
 
@@ -151,7 +220,7 @@ Diferentemente das memórias voláteis tradicionais (DRAM), a tecnologia de Mem�
 \begin{figure}[h]
 \centering
 \includegraphics[scale=0.5]{figs/graphs/pinned/waf.png}
-\caption{Vazão geral (operações por segundo) em todas as configurações. Quanto maior, melhor.}
+\caption{Fator de Amplificação de Escrita (WAF). Quanto menor, melhor.}
 \label{fig:waf_pinned}
 \end{figure}
 
@@ -161,20 +230,36 @@ Diferentemente das memórias voláteis tradicionais (DRAM), a tecnologia de Mem�
 \label{tab:waf_pinned}
 \begin{tabular}{lcc}
 \hline
-\textbf{Configuração} & \textbf{Média (WAF)} & \textbf{Desvio Padrão} \\ \hline
-Base-burst & 2,8920 & 0,0400 \\
-Adpt-burst & 2,8840 & 0,0554 \\
-Base-latency & 2,7480 & 0,0770 \\
-Adpt-latency & 2,7520 & 0,0510 \\
-Base-mixed & 1,8760 & 0,1640 \\
-Adpt-mixed & 1,8480 & 0,1388 \\
-Base-scaling\_16 & 2,2280 & 0,0614 \\
-Adpt-scaling\_16 & 2,1840 & 0,0688 \\ \hline
+\textbf{Configuração} & \textbf{Média (WAF)} & \textbf{IC 95\% } \\ \hline
+Base-waf        & 1.908 & \pm 0.068 \\
+Adpt-alpha0.5   & 1.876 & \pm 0.080 \\
+Adpt-alpha1.0   & 1.948 & \pm 0.052 \\
+Adpt-alpha1.5   & 1.872 & \pm 0.076 \\
+Adpt-alpha2.0   & 1.880 & \pm 0.084 \\
+Adpt-alpha3.0   & 1.960 & \pm 0.040 \\
+Adpt-alpha4.0   & 1.796 & \pm 0.112 \\
+Base-latency    & 2.748 & \pm 0.032 \\
+Adpt-latency    & 2.752 & \pm 0.020 \\
+Base-scaling\_1  & 1.000 & \pm 0.000 \\
+Adpt-scaling\_1  & 1.000 & \pm 0.000 \\
+Base-scaling\_2  & 1.400 & \pm 0.000 \\
+Adpt-scaling\_2  & 1.400 & \pm 0.000 \\
+Base-scaling\_4  & 1.664 & \pm 0.040 \\
+Adpt-scaling\_4  & 1.608 & \pm 0.036 \\
+Base-scaling\_8  & 2.032 & \pm 0.024 \\
+Adpt-scaling\_8  & 2.068 & \pm 0.024 \\
+Base-scaling\_16 & 2.228 & \pm 0.024 \\
+Adpt-scaling\_16 & 2.184 & \pm 0.028 \\
+Base-mixed      & 1.876 & \pm 0.068 \\
+Adpt-mixed      & 1.848 & \pm 0.060 \\
+Base-burst      & 2.892 & \pm 0.016 \\
+Adpt-burst      & 2.884 & \pm 0.020 \\ \hline
 \end{tabular}
 \end{table}
 
 A amplificação manteve níveis altamente controlados, independentemente do tipo de sobrecarga aplicada. Destaca-se a eficiência na execução em cenário misto, apresentando WAF estável na casa de 1,84, com leve oscilação perante o motor base, bem como na contenção de carga pesada (\textit{scaling\_16}), alcançando WAF de 2,18. Isso responde definitivamente à viabilidade de adoção corporativa do projeto: a preservação do estado de saúde da mídia física não foi negligenciada em prol das métricas sistêmicas superficiais. O banco de dados operou em estado de otimização, estendendo a vida útil do \textit{hardware} adjacente sem incorrer em penalizações transacionais.
 
+\FloatBarrier
 \section{Ameaças à Validade}
 
 Nesta seção, discutem-se as limitações e os fatores que podem influenciar a interpretação dos resultados, garantindo a transparência necessária para a validação científica do Escalonador Adaptativo proposto.
