@@ -3,7 +3,7 @@
 
 \section*{Conclusões}
 
-Este trabalho propôs e avaliou um escalonador adaptativo de compactações para arquiteturas LSM-tree operando sobre Memória Persistente (PMEM). A motivação central residia na necessidade de mitigar os impactos negativos da compactação,  como a amplificação de escrita (WAF) e os picos de latência\cite{revisting_design_lsm}, em dispositivos que, embora ofereçam persistência com baixa latência, possuem restrições de durabilidade e sensibilidade à topologia de memória\cite{van_renen_2020}.
+Este trabalho propôs e avaliou um escalonador adaptativo de compactações para arquiteturas LSM-tree operando sobre Memória Persistente (PMEM). A motivação central residia na necessidade de mitigar os impactos negativos da compactação,  como a amplificação de escrita (WAF) e os picos de latência~\cite{revisting_design_lsm}, em dispositivos que, embora ofereçam persistência com baixa latência, possuem restrições de durabilidade e sensibilidade à topologia de memória~\cite{van_renen_2020}.
 
 Os resultados experimentais demonstraram que a adoção de um mecanismo de observabilidade dinâmica, capaz de calcular pontuações de utilidade baseadas no estado da CPU e do barramento de I/O, é uma estratégia eficaz. As principais conclusões deste estudo são:
 
