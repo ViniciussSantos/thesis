@@ -34,7 +34,7 @@ Capítulo~\ref{cap:implementacao}.
 O ACS é composto por três módulos principais: o Observador de Carga e o Calculador
 de Utilidade.
 
-\subsection{Observador de Carga}
+\subsection*{Observador de Carga}
 
 Este módulo coleta métricas em tempo real provenientes do ambiente de execução.
 Definimos o Fator de Stress do sistema no instante $t$ como:
@@ -94,7 +94,7 @@ $L_{pmem}$, a EMA é aplicada independentemente de haver ou não amostras na jan
 corrente, de forma que períodos sem atividade de escrita decaiam gradualmente o
 valor suavizado em direção a zero, refletindo a dissipação real do stress.
 
-\subsection{Função de Utilidade e Pontuação Adaptativa}
+\subsection*{Função de Utilidade e Pontuação Adaptativa}
 
 A decisão de compactação em LSM-trees tradicionais baseia-se em um score estático
 para cada nível $i$. O ACS introduz a Pontuação Adaptativa:
@@ -138,7 +138,7 @@ Esse mecanismo permite que o escalonador aproveite períodos de baixa pressão p
 reduzir proativamente o débito técnico de compactação acumulado durante picos de
 carga, prevenindo degradação futura de leitura.
 
-\subsection{Algoritmo de Decisão}
+\subsection*{Algoritmo de Decisão}
 
 O processo de seleção segue o seguinte fluxo lógico:
 

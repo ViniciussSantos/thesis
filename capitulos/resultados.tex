@@ -264,25 +264,25 @@ A amplificação manteve níveis altamente controlados, independentemente do tip
 
 Nesta seção, discutem-se as limitações e os fatores que podem influenciar a interpretação dos resultados, garantindo a transparência necessária para a validação científica do Escalonador Adaptativo proposto.
 
-\subsection{Validade Interna}
+\subsection*{Validade Interna}
 A validade interna refere-se à confiança de que as melhorias observadas (como a redução do P99 no cenário \textit{scaling\_16}) foram causadas pelo algoritmo adaptativo e não por ruídos externos. 
 
 Uma ameaça relevante é a interação entre o nosso escalonador e as políticas nativas de \textit{write stall} do RocksDB. Embora tenhamos isolado o comportamento do agendamento de compactação, o motor original possui mecanismos de defesa que podem desacelerar a escrita do usuário se os níveis da árvore LSM acumularem excessivamente. Outro fator de interferência é o escalonador do \textit{kernel} Linux; mesmo no cenário \textit{Pinned}, interrupções de hardware e processos do sistema operando nos mesmos núcleos podem inserir variações na latência, o que explica os desvios-padrão observados de até $\pm 54,17 \mu s$ em cargas intensas.
 
-\subsection{Validade Externa}
+\subsection*{Validade Externa}
 A validade externa diz respeito à generalização dos resultados. Nossos testes foram conduzidos em um ambiente de hardware específico e de alto desempenho: processador Intel Xeon Gold 5317 e Memória Persistente Intel Optane. 
 
 É possível que os ganhos de desempenho e a redução de WAF não se comportem da mesma forma em mídias de armazenamento mais lentas, como SSDs SATA ou HDDs convencionais, onde a latência de I/O é ordens de grandeza superior à da PMEM. Além disso, embora os \textit{workloads} (\textit{Mixed, Burst, Scaling, Latency}) tenham sido desenhados para cobrir os principais padrões de acesso do \texttt{db\_bench}, eles permanecem sendo cargas sintéticas. Aplicações reais com acessos altamente assimétricos ou padrões de dados comprimíveis podem apresentar resultados distintos.
 
-\subsection{Validade de Construção}
+\subsection*{Validade de Construção}
 Esta categoria avalia se as métricas escolhidas realmente representam o que pretendemos medir. Utilizamos o Fator de Amplificação de Escrita (WAF) como métrica primária para durabilidade da Memória Persistente. No entanto, o desgaste físico real das células de NVM depende também da localidade das escritas e do alinhamento de blocos, detalhes que o WAF, sendo uma razão lógica, simplifica. Da mesma forma, o uso do percentil P99 é um excelente indicador de SLA, mas pode não capturar anomalias extremas que seriam visíveis apenas em percentis superiores, como P99.9 ou P99.99.
 
-\subsection{Validade de Conclusão}
+\subsection*{Validade de Conclusão}
 A validade de conclusão trata da robustez estatística. Para mitigar esta ameaça, adotamos um rigoroso protocolo de 25 repetições para cada teste, permitindo o cálculo de médias e desvios-padrão estáveis. 
 
 Contudo, uma limitação admitida é a ausência de testes de hipótese formais (como o teste t de Student ou ANOVA) para confirmar a significância estatística de todas as variações. Embora as tendências nos gráficos de vazão (\textit{throughput}) e latência pareçam claras, a sobreposição de intervalos de desvio em certos cenários de baixa carga sugere que, para esses casos específicos, a distinção entre o modelo \textit{Base} e o \textit{Adaptativo} pode ser influenciada pela variância inerente ao sistema operacional.
 
-\subsection{Síntese das Limitações}
+\subsection*{Síntese das Limitações}
 Em resumo, os resultados apresentados devem ser interpretados sob as seguintes premissas:
 \begin{itemize}
     \item Os benefícios de desempenho são maximizados em ambientes com afinidade NUMA e uso de Memória Persistente;

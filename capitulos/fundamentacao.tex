@@ -84,7 +84,8 @@ reorganizando os dados para reduzir o custo de leitura futura. A mecânica
 detalhada, as políticas de compactação e as métricas de custo associadas são
 analisadas na Seção~\ref{sec:compaction}.
 
-\subsection*{Compactação}\label{sec:compaction}
+\subsection*{Compactação}
+\label{sec:compaction}
 
 A compactação (\textit{compaction}) é o mecanismo fundamental que permite às
 LSM-trees manterem desempenho sustentável ao longo do tempo. Como as SSTables são
@@ -186,7 +187,7 @@ nível único (\textit{single-level}) que aproveita o endereçamento a byte da P
 para eliminar níveis intermediários. Esses trabalhos evidenciam que o uso eficiente
 da PMem exige adaptações profundas nas políticas de gerenciamento da LSM-tree, o que motiva diretamente a proposta de escalonamento adaptativo deste trabalho.
 
-\subsection{Modos de Operação}
+\subsection*{Modos de Operação}
 
 A Intel Optane suporta dois modos principais de operação, com características
 distintas para cada caso de uso~\cite{van_renen_2020}:
@@ -205,7 +206,7 @@ distintas para cada caso de uso~\cite{van_renen_2020}:
     os \textit{flushes} de linha de cache.
 \end{itemize}
 
-\subsection{Domínios de Persistência e Primitivas}
+\subsection*{Domínios de Persistência e Primitivas}
 
 A garantia de durabilidade na PMem exige o gerenciamento explícito dos caches da
 CPU. Os dados escritos por uma instrução \texttt{MOV} podem residir nos caches
@@ -233,7 +234,7 @@ concorrência, múltiplas \textit{threads} emitindo \textit{persist-barriers}
 simultaneamente podem saturar os buffers internos do controlador de PMem,
 resultando em degradação severa de latência.
 
-\subsection{Desempenho e Assimetria}
+\subsection*{Desempenho e Assimetria}
 
 A avaliação experimental conduzida por~\citeauthor{van_renen_2020}~\cite{van_renen_2020}
 revela comportamentos críticos para o escalonamento:
