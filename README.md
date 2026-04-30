@@ -6,7 +6,7 @@ Things to fix:
 ```
     Coisas pequenas:
         [x] Corrigir os nomes da banca examinadora
-        [ ] Capitalizar todas as menções a figuras ou tabelas
+        [x] Capitalizar todas as menções a figuras ou tabelas
         [x] Corrigir o uso de aspas
     Coisas grandes:
         [ ] Adicionar uma seção falando sobre o uso de IA generativa

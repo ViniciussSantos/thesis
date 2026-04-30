@@ -25,7 +25,7 @@ Considerando que as estruturas Log-Structured Merge-Trees sobre armazenamento NV
 \section{Análise do Viés de Escalonamento e Afinidade de CPU}
 Um aspecto arquitetural profundo na avaliação de bancos de dados modernos em PMEM é a interferência do escalonador do Sistema Operacional na alocação de \textit{threads}. Como apontado durante a formulação deste projeto, questionou-se se a fixação prévia de processos a determinados núcleos (\textit{CPU pinning}) poderia introduzir um viés nos resultados. Para mitigar esta dúvida, a suíte de \textit{benchmarks} foi executada integralmente em duas instâncias isoladas: \textit{Pinned} (confinando o processo aos núcleos físicos de 0 a 11 via ferramenta \textit{taskset}) e \textit{Unpinned} (delegando total liberdade ao escalonador do \textit{kernel} do Linux).
 
-A análise direta dos gráficos da figura \ref{fig:bias_comparison_throughput} e da tabela \ref{tab:bias_throughput} comprova a premissa de sensibilidade da arquitetura. Em cargas altamente concorrentes e mistas (gráficos \ref{fig:bias_comparison_throughput_burst} e \ref{fig:bias_comparison_throughput_mixed}), o ambiente livre (\textit{Unpinned}) restringe a vazão em torno de 526 mil operações por segundo. Quando forçamos a afinidade com a CPU, garantindo que o acesso à memória ocorra localmente ao nó NUMA da Intel Optane, o rendimento atinge a marca de $\sim$663 mil operações por segundo (aumento superior a 25\%).  
+A análise direta dos gráficos da Figura \ref{fig:bias_comparison_throughput} e da Tabela \ref{tab:bias_throughput} comprova a premissa de sensibilidade da arquitetura. Em cargas altamente concorrentes e mistas (gráficos \ref{fig:bias_comparison_throughput_burst} e \ref{fig:bias_comparison_throughput_mixed}), o ambiente livre (\textit{Unpinned}) restringe a vazão em torno de 526 mil operações por segundo. Quando forçamos a afinidade com a CPU, garantindo que o acesso à memória ocorra localmente ao nó NUMA da Intel Optane, o rendimento atinge a marca de $\sim$663 mil operações por segundo (aumento superior a 25\%).
 
 Este ganho superior a 25\% ocorre porque a PMEM atua como um dispositivo dependente de topologia \textit{Non-Uniform Memory Access} (NUMA). No cenário \textit{Unpinned}, a constante migração de contexto do SO expõe o RocksDB a ciclos excessivos de comunicação inter-soquetes. Note que os gráficos \ref{fig:bias_comparison_throughput_latency}, \ref{fig:bias_comparison_throughput_scaling} e \ref{fig:bias_comparison_throughput_waf} também mostram pouca diferença entre os ambientes. O viés de \textit{pinning}, portanto, não invalida o ensaio; muito pelo contrário, ele representa o cenário ótimo indispensável para sistemas de bancos de dados orientados a desempenho que desejam extrair o real limite das memórias endereçáveis por \textit{byte}. O restante desta discussão terá como foco primordial os resultados \textit{Pinned}, dada a sua representatividade para configurações corporativas de produção.
 
@@ -72,7 +72,7 @@ Adpt-burst & 94.072,6 & \pm 612,85 & 94.312,6 & \pm 532,49 \\ \hline
 
 \FloatBarrier
 \section{Comportamento da Vazão Sistêmica (Throughput)}
-Os gráficos na figura \ref{fig:throughput_pinned} (\textit{Pinned Environment}) com os dados que estão descritos na Tabela \ref{tab:throughput_pinned} evidencia o desempenho bruto dos mecanismos sob diferentes variações paramétricas do agendador e do grau de paralelismo. Uma métrica primordial de aceitação de qualquer componente adaptativo reside na confirmação de que sua \enquote{Função de Utilidade}, responsável por calcular o peso dinâmico de PMem e de CPU, não gere \textit{overhead} destrutivo.
+Os gráficos na Figura \ref{fig:throughput_pinned} (\textit{Pinned Environment}) com os dados que estão descritos na Tabela \ref{tab:throughput_pinned} evidencia o desempenho bruto dos mecanismos sob diferentes variações paramétricas do agendador e do grau de paralelismo. Uma métrica primordial de aceitação de qualquer componente adaptativo reside na confirmação de que sua \enquote{Função de Utilidade}, responsável por calcular o peso dinâmico de PMem e de CPU, não gere \textit{overhead} destrutivo.
 
 \begin{figure}[htbp]
 \centering
@@ -118,7 +118,7 @@ Observamos que o algoritmo Adaptativo opera estatisticamente em paridade com o m
 \FloatBarrier
 \section{Mitigação de Compaction Stalls e Latência de Cauda (P99)}
 
-Quando tarefas de compactação das estruturas inferiores da árvore LSM concorrem por processador e barramento de memória I/O com os pedidos de usuários, ocorrem as chamadas \enquote{paradas de compactação} (\textit{compaction stalls}). Para sistemas de missão crítica, a latência do 99º percentil (P99) dita a percepção de desempenho. Os resultados estão presentes no gráfico \ref{fig:latency_p99_pinned} (\textit{Pinned Environment}) e na tabela \ref{tab:latency_p99}.
+Quando tarefas de compactação das estruturas inferiores da árvore LSM concorrem por processador e barramento de memória I/O com os pedidos de usuários, ocorrem as chamadas \enquote{paradas de compactação} (\textit{compaction stalls}). Para sistemas de missão crítica, a latência do 99º percentil (P99) dita a percepção de desempenho. Os resultados estão presentes na Figura \ref{fig:latency_p99_pinned} (\textit{Pinned Environment}) e na Tabela \ref{tab:latency_p99}.
 
 \begin{figure}[h]
 \centering
@@ -166,7 +166,7 @@ A intervenção do nosso escalonador mostra seu brilho na contenção de degrada
 \FloatBarrier
 \section{Eficiência das Compactações e Custo Computacional}
 
-Um questionamento vital decorre das otimizações de latência: estaríamos diminuindo o trabalho de fundo (criando lixo excessivo) para melhorar o tempo de resposta superficial? A análise conjunta dos gráficos \ref{fig:compactio_cpu_pinned_a}, \ref{fig:compaction_count_pinned_b}, \ref{fig:compaction_ratio_c}  contrapõe essa preocupação com base em fatos quantitativos. 
+Um questionamento vital decorre das otimizações de latência: estaríamos diminuindo o trabalho de fundo (criando lixo excessivo) para melhorar o tempo de resposta superficial? A análise conjunta das Figuras \ref{fig:compactio_cpu_pinned_a}, \ref{fig:compaction_count_pinned_b}, \ref{fig:compaction_ratio_c}  contrapõe essa preocupação com base em fatos quantitativos. 
 
 \begin{figure}[h]
 \centering
@@ -209,13 +209,13 @@ Adpt-burst      & 439.04 & \pm 3.321 & 134.298 & \pm 1.1808\\ \hline
 \end{tabular}
 \end{table}
 
-Conforme a tabela \ref{tab:compaction_effort}, os volumes absolutos de trabalho executado pelo mecanismo original e pelo proposto são intrinsecamente idênticos. Durante as volumosas rajadas da carga (\textit{Burst}), o modelo padrão realizou em média $\sim$437 compactações custando 133,37 segundos de CPU; de forma análoga, nosso protótipo realizou $\sim$439 compactações consumindo 134,29 segundos. 
+Conforme a Tabela \ref{tab:compaction_effort}, os volumes absolutos de trabalho executado pelo mecanismo original e pelo proposto são intrinsecamente idênticos. Durante as volumosas rajadas da carga (\textit{Burst}), o modelo padrão realizou em média $\sim$437 compactações custando 133,37 segundos de CPU; de forma análoga, nosso protótipo realizou $\sim$439 compactações consumindo 134,29 segundos. 
 
 O cerne do escalonador implementada é explicitado aqui: o escalonador adaptativo entrega latências de P99 menores e sustenta a vazão \textbf{não porque abdica do trabalho}, mas porque utiliza o sensoriamento de I/O para agendar e distribuir esse montante exato de carga nos intervalos menos prejudiciais aos processos de \textit{frontend}. Trata-se de uma reorganização temporal eficiente, isenta de acúmulo patológico de registros inativos na PMEM.
 
 
 \section{Durabilidade do Dispositivo e Amplificação de Escrita (WAF)}
-Diferentemente das memórias voláteis tradicionais (DRAM), a tecnologia de Memória Persistente baseada na fase sólida de materiais apresenta limites operacionais no que tange a ciclos de gravação. O Fator de Amplificação de Escrita (WAF) afere quantas gravações físicas são necessárias por operação lógica de usuário, conforme retratado no gráfico \ref{fig:waf_pinned} e na tabela \ref{tab:waf_pinned}.
+Diferentemente das memórias voláteis tradicionais (DRAM), a tecnologia de Memória Persistente baseada na fase sólida de materiais apresenta limites operacionais no que tange a ciclos de gravação. O Fator de Amplificação de Escrita (WAF) afere quantas gravações físicas são necessárias por operação lógica de usuário, conforme retratado na Figura \ref{fig:waf_pinned} e na Tabela \ref{tab:waf_pinned}.
 
 \begin{figure}[h]
 \centering
