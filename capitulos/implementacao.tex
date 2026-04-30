@@ -32,24 +32,24 @@ e sobrescreve exclusivamente esse método. A Figura~\ref{fig:acs_arch} ilustra a
 % ACS
 \node[box, fill=green!15, right=3.0cm of rocksdb] (picker)
     {\textbf{AdaptiveLevelCompactionPicker}};
-\node[box, fill=green!15, below=of picker] (observer)
-    {\textbf{LoadObserver} ($\sigma(t)$)};
-\node[box, fill=green!15, below=of observer] (utility)
+\node[box, fill=green!15, below=of picker] (utility)
     {\textbf{Calculador de Utilidade} ($A^{\text{boost}}_i$)};
+\node[box, fill=green!15, below=of utility] (observer)
+    {\textbf{LoadObserver} ($\sigma(t)$)};
 
 % Hardware
 \node[cloud, fill=orange!15, below=2.2cm of sstable] (pmem) {Intel Optane PMem};
 \node[cloud, fill=orange!15, right=of pmem] (cpu) {CPU / Threads};
 
 % Arrows
-\draw[arrow] (rocksdb) -- node[above, font=\tiny]{flush/pick} (picker);
-\draw[arrow] (picker) -- (observer);
+\draw[arrow] (rocksdb) -- node[above, font=\tiny]{flush/pick}
+                          node[below, font=\tiny]{decisão} (picker);
 \draw[arrow] (observer) -- (utility);
-\draw[arrow] (utility.west) -- ++(-0.6,0) |- node[left, font=\tiny]{decisão} (rocksdb.west);
+\draw[arrow] (utility)  -- (picker);
 \draw[arrow] (memtable) -- (sstable);
-\draw[arrow] (sstable) -- (pmem);
-\draw[dasharrow] (pmem.north) -- node[right, font=\tiny]{latência} (observer.south);
-\draw[dasharrow] (cpu.north) |- node[right, font=\tiny]{$U_{\text{cpu}}$} (observer.east);
+\draw[arrow] (sstable)  -- (pmem);
+\draw[dasharrow] (pmem.east)  -- node[above, font=\tiny]{latência} (observer.west);
+\draw[dasharrow] (cpu.north)  -- (observer.south);
 
 \end{tikzpicture}
 \caption{Arquitetura do ACS integrado ao RocksDB. O \textit{LoadObserver} coleta

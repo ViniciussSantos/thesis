@@ -11,5 +11,5 @@ Things to fix:
     Coisas grandes:
         [ ] Adicionar uma seção falando sobre o uso de IA generativa
         [ ] Atualizar a introdução para explicar quais são as seções e do que tratam
-        [ ] Corrigir o gráfico na seção 5.1 Integração ao Fluxo de Compactação do RocksDB
+        [x] Corrigir o gráfico na seção 5.1 Integração ao Fluxo de Compactação do RocksDB
 ```
