@@ -7,7 +7,7 @@ Things to fix:
     Coisas pequenas:
         [x] Corrigir os nomes da banca examinadora
         [ ] Capitalizar todas as menções a figuras ou tabelas
-        [ ] Corrigir o uso de aspas
+        [x] Corrigir o uso de aspas
     Coisas grandes:
         [ ] Adicionar uma seção falando sobre o uso de IA generativa
         [ ] Atualizar a introdução para explicar quais são as seções e do que tratam
