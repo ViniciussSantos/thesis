@@ -3,7 +3,7 @@
 
 Neste capítulo, apresentamos os resultados obtidos a partir das experimentações práticas do Escalonador Adaptativo de Compactações implementado no RocksDB. O objetivo desta avaliação é quantificar os ganhos e \textit{trade-offs} introduzidos pela adaptação dinâmica frente ao agendador estático padrão da literatura (aqui denotado como \textit{Base}). 
 
-A fim de garantir solidez e validade estatística das métricas, todos os cenários de teste foram processados por uma suíte de automação em Python que utiliza a ferramenta interna de benchmark do RocksDB chamada \textit{db\_bench}, a qual executou 25 repetições para cada configuração experimental e computou médias e desvios-padrão. Antes da coleta de dados de cada rodada, o banco de dados foi submetido a 100.000 operações de \textit{warmup} para garantir o pré-aquecimento de \textit{caches} da CPU e do Sistema Operacional.
+A fim de garantir solidez e validade estatística das métricas, todos os cenários de teste foram processados por uma suíte de automação em Python que utiliza a ferramenta interna de benchmark do RocksDB chamada \textit{db\_bench}, a qual executou 25 repetições para cada configuração experimental e computou médias e intervalos de confiança. Antes da coleta de dados de cada rodada, o banco de dados foi submetido a 100.000 operações de \textit{warmup} para garantir o pré-aquecimento de \textit{caches} da CPU e do Sistema Operacional.
 
 \section{Metodologia e Definição das Cargas de Trabalho (\textit{Workloads})}
 
