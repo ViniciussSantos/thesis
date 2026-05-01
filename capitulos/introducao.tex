@@ -56,3 +56,10 @@ As principais perguntas de pesquisa são:
     \item Que fatores arquiteturais influenciam
     significativamente o desempenho de sistemas LSM sobre PMEM?
 \end{itemize}
+
+\section{Organização do Trabalho}
+
+O restante deste trabalho está organizado da seguinte forma: O Capítulo~\ref{cap:fundamentacao} estabelece a fundamentação teórica,
+cobrindo os mecanismos internos das LSM-trees, as políticas de compactação e as características da Memória Persistente que motivam a proposta. O Capítulo~\ref{cap:proposta} formaliza o problema de pesquisa e define as métricas utilizadas na avaliação. O Capítulo~\ref{cap:design} descreve a arquitetura do Escalonador Adaptativo de Compactações (ACS), detalhando o Observador de Carga, a função de utilidade
+e o algoritmo de decisão. O Capítulo~\ref{cap:implementacao} documenta as decisões de engenharia adotadas na integração do ACS ao RocksDB, incluindo os mecanismos de segurança contra inanição estrutural.O Capítulo~\ref{cap:resultados} apresenta e discute os resultados experimentais obtidos sob diferentes cargas de trabalho, analisando vazão, latência de cauda, esforço de compactação e amplificação de escrita. Por fim, o Capítulo~\ref{cap:conclusao} sintetiza as conclusões do trabalho e aponta direções para pesquisas futuras.
+
